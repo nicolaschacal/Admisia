@@ -1,5 +1,3 @@
-const { GoogleGenAI } = require("@google/genai");
-
 const SYSTEM_INSTRUCTION = `
 Sos AdmisIA, el asistente virtual de admisiones del Colegio Horizonte.
 IMPORTANTE: Colegio Horizonte y todos los datos institucionales y económicos de este contexto son ficticios y fueron creados para una demostración académica.
@@ -39,7 +37,7 @@ ESTRUCTURA:
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ success: false, message: "Método no permitido" });
+    return res.status(405).json({ success: false, message: "Método no permitido." });
   }
 
   try {
@@ -53,41 +51,114 @@ module.exports = async (req, res) => {
       return res.status(400).json({ success: false, message: "La consulta es demasiado larga." });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ success: false, message: "Falta configurar GEMINI_API_KEY." });
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({
+        success: false,
+        message: "Falta configurar GEMINI_API_KEY en Vercel."
+      });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      config: { systemInstruction: SYSTEM_INSTRUCTION },
-      contents: message
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
+    let googleResponse;
+
+    try {
+      googleResponse = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey
+          },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: SYSTEM_INSTRUCTION }]
+            },
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: message.trim() }]
+              }
+            ],
+            generationConfig: {
+              maxOutputTokens: 700
+            }
+          }),
+          signal: controller.signal
+        }
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const rawText = await googleResponse.text();
+    let data;
+
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = null;
+    }
+
+    if (!googleResponse.ok) {
+      const providerMessage =
+        data?.error?.message ||
+        rawText.slice(0, 300) ||
+        "Gemini devolvió un error sin detalle.";
+
+      let friendlyMessage = "Gemini devolvió un error.";
+      if (googleResponse.status === 400) friendlyMessage = "Gemini rechazó la solicitud.";
+      if (googleResponse.status === 401 || googleResponse.status === 403) {
+        friendlyMessage = "La clave de Gemini no está autorizada o no es válida.";
+      }
+      if (googleResponse.status === 404) {
+        friendlyMessage = "El modelo de Gemini configurado no está disponible.";
+      }
+      if (googleResponse.status === 429) {
+        friendlyMessage = "Se alcanzó temporalmente el límite de uso de Gemini.";
+      }
+
+      return res.status(googleResponse.status).json({
+        success: false,
+        message: friendlyMessage,
+        detail: providerMessage
+      });
+    }
+
+    const responseText = data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("")
+      .trim();
+
+    if (!responseText) {
+      return res.status(502).json({
+        success: false,
+        message: "Gemini respondió, pero no devolvió texto utilizable."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      response: responseText
     });
-
-    return res.status(200).json({ success: true, response: response.text });
   } catch (error) {
-    console.error("Error al consultar Gemini:", error);
+    if (error?.name === "AbortError") {
+      return res.status(504).json({
+        success: false,
+        message: "Gemini demoró demasiado en responder (más de 20 segundos)."
+      });
+    }
 
-    const status = Number(error?.status || error?.code) || 500;
-    let detail = String(error?.message || "Error desconocido al consultar Gemini");
+    console.error("Error en /api/chat:", error);
 
-    // Nunca exponer la clave aunque una librería la incluyera accidentalmente en el error.
-    const secret = process.env.GEMINI_API_KEY;
-    if (secret) detail = detail.split(secret).join("[CLAVE OCULTA]");
-
-    // Evitar devolver trazas o respuestas gigantes al navegador.
-    detail = detail.replace(/\s+/g, " ").slice(0, 500);
-
-    let friendlyMessage = "Gemini devolvió un error.";
-    if (status === 400) friendlyMessage = "Gemini rechazó la solicitud.";
-    if (status === 401 || status === 403) friendlyMessage = "La clave de Gemini no está autorizada o no es válida.";
-    if (status === 404) friendlyMessage = "El modelo de Gemini configurado no está disponible.";
-    if (status === 429) friendlyMessage = "Se alcanzó temporalmente el límite de uso de Gemini.";
-
-    return res.status(status >= 400 && status < 600 ? status : 500).json({
+    return res.status(500).json({
       success: false,
-      message: friendlyMessage,
-      detail
+      message: "Error interno al comunicarse con Gemini.",
+      detail: String(error?.message || "Error desconocido").slice(0, 300)
     });
   }
 };
