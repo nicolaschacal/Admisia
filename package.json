@@ -1,0 +1,9 @@
+{
+  "name": "admisia-colegio-horizonte",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Asistente de admisiones escolares con Gemini - proyecto académico",
+  "dependencies": {
+    "@google/genai": "^2.25.0"
+  }
+}
