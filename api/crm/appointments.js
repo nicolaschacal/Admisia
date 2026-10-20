@@ -2,6 +2,7 @@ const { DateTime } = require("luxon");
 const { query, withTransaction } = require("../../lib/db");
 const { requireManager } = require("../../lib/auth");
 const { ZONE } = require("../../lib/scheduling");
+const { updateCalendarEventStatus } = require("../../lib/google-calendar");
 
 const VALID = new Set(["scheduled","confirmed","completed","no_show","cancelled"]);
 
@@ -108,6 +109,12 @@ module.exports = async (req, res) => {
 
         return result.rows[0];
       });
+
+      try {
+        await updateCalendarEventStatus(updated.external_calendar_event_id, status);
+      } catch (calendarError) {
+        console.error("No se pudo actualizar Google Calendar:", calendarError.message);
+      }
 
       return res.status(200).json({ success: true, appointment: updated });
     } catch (error) {
