@@ -149,7 +149,7 @@ function getInstantAnswer(message, history = []) {
   return null;
 }
 
-async function callGeminiModel({ apiKey, model, contents, timeoutMs = 6500 }) {
+async function callGeminiModel({ apiKey, model, contents, timeoutMs = 4500 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -210,14 +210,14 @@ async function callGeminiModel({ apiKey, model, contents, timeoutMs = 6500 }) {
 async function askGeminiWithFallback({ apiKey, contents }) {
   const models = [
     "gemini-3.5-flash-lite",
-    "gemini-3.6-flash"
+    "gemini-3.1-flash-lite"
   ];
 
   let lastError;
 
   for (const model of models) {
     try {
-      return await callGeminiModel({ apiKey, model, contents, timeoutMs: 6500 });
+      return await callGeminiModel({ apiKey, model, contents, timeoutMs: 4500 });
     } catch (error) {
       lastError = error;
       const transient =
