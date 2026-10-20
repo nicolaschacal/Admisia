@@ -34,6 +34,8 @@ const routes = {
   "/api/crm/followups": require("../api/crm/followups"),
   "/api/crm/inquiries": require("../api/crm/inquiries"),
   "/api/crm/analyze-lead": require("../api/crm/analyze-lead"),
+  "/api/crm/settings": require("../api/crm/settings"),
+  "/api/crm/blocked-slots": require("../api/crm/blocked-slots"),
   "/api/cron/followups": require("../api/cron/followups")
 };
 
