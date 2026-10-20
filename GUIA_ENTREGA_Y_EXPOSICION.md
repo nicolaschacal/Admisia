@@ -1,94 +1,62 @@
-# Guía de entrega y exposición — AdmisIA
+# Guía de entrega y exposición — AdmisIA / Colegio Nubarian
 
-## 1. Descripción del problema
+## 1. Problema
 
-El Colegio Horizonte recibe diariamente consultas de familias interesadas en una posible inscripción. Muchas preguntas se repiten: propuesta educativa, niveles, horarios, aranceles, descuentos y pasos para inscribirse. El equipo de Admisiones no siempre puede responder de inmediato y una demora puede hacer que una familia pierda interés.
+El Colegio Nubarian recibe consultas de familias interesadas en Inicial y Primaria. Muchas preguntas se repiten: propuesta educativa, horarios, modalidades, proceso de inscripción y orientación económica. El equipo de Admisiones no siempre puede responder inmediatamente.
 
-## 2. Solución propuesta y justificación del uso de IA
+## 2. Solución
 
-Se propone AdmisIA, un asistente virtual disponible las 24 horas que responde consultas iniciales basándose exclusivamente en información autorizada del colegio.
+AdmisIA funciona como primer punto de contacto. La familia escribe en una interfaz de chat y recibe respuestas basadas en información institucional autorizada.
 
-Un LLM es adecuado porque las familias no formulan las preguntas siempre de la misma manera. La IA puede comprender lenguaje natural, identificar la intención de la consulta y transformar información institucional en una respuesta clara y contextualizada.
+La IA no reemplaza al equipo de Admisiones: orienta y deriva a una entrevista o recorrida cuando la consulta necesita confirmación humana.
 
-La IA no reemplaza al equipo de Admisiones: funciona como primera orientación y deriva a una entrevista cuando la consulta requiere confirmación humana.
+## 3. Uso de un LLM
 
-## 3. Desarrollo e integración del LLM
-
-Se utiliza Gemini con la librería `@google/genai`.
+El backend se comunica con el modelo Gemini de Google mediante su API.
 
 Flujo:
 
-1. La familia escribe una consulta en el frontend.
-2. JavaScript envía un POST a `/api/chat`.
-3. El backend valida el mensaje.
-4. El backend envía a Gemini el mensaje junto con el `systemInstruction`.
-5. Gemini genera una respuesta siguiendo el contexto y las restricciones.
-6. El backend devuelve JSON al frontend.
-7. La respuesta se muestra en pantalla.
+1. La familia escribe una consulta.
+2. El frontend envía un POST a `/api/chat`.
+3. El backend valida el mensaje y agrega el contexto institucional.
+4. Se envían a Gemini el system prompt, el historial reciente y la nueva pregunta.
+5. Gemini genera una respuesta.
+6. El backend devuelve JSON.
+7. El frontend muestra la respuesta.
 
-## 4. Configuración del sistema y diseño del prompt
+## 4. Contexto y prompt
 
 ### Rol
-Asistente virtual de admisiones del Colegio Horizonte.
+Asistente virtual de admisiones del Colegio Nubarian.
 
-### Objetivo
-Orientar a familias sobre propuesta educativa, niveles, horarios, aranceles y proceso de inscripción, y facilitar el paso a una entrevista.
+### Alcance
+Exclusivamente Inicial y Primaria.
 
 ### Contexto
-El prompt contiene la información institucional ficticia autorizada: propuesta pedagógica, niveles, horarios, aranceles, descuentos y proceso de admisión.
+El prompt contiene información sobre propuesta educativa, modalidades, horarios, instalaciones, proceso de inscripción, contacto y valores estimativos 2026.
 
-### Estilo
-Español, cálido, profesional, breve y fácil de entender.
+### Política económica
+El colegio no comunica el detalle económico definitivo por WhatsApp o chat. El asistente puede brindar valores estimativos de referencia y debe aclarar que el detalle final se informa luego de conocer la propuesta y las instalaciones.
 
 ### Restricciones
-- No inventar vacantes, costos, descuentos ni becas.
-- Si no existe información, derivar a Admisiones.
-- No pedir datos sensibles ni documentación de menores.
-- Limitar las respuestas al tema de admisiones.
+- No inventar vacantes ni información institucional.
+- No presentar costos estimativos como definitivos.
+- No solicitar datos sensibles de menores.
+- No mencionar niveles que el colegio no ofrece.
+- Derivar a Admisiones cuando algo requiera confirmación.
 
-### Estructura de respuestas
-1. Respuesta directa.
-2. Información relevante.
-3. Próximo paso recomendado.
+## 5. Memoria temporal
 
-## 5. Guion sugerido para la exposición (5–10 minutos)
+El frontend guarda hasta las últimas 10 intervenciones en `sessionStorage`. Gemini no aprende permanentemente: el historial se vuelve a enviar en cada nueva consulta. Al tocar “Nueva consulta” el historial se elimina.
 
-### Minuto 0–1: problema
-“Elegimos trabajar sobre el proceso de admisiones de un colegio. Las familias suelen consultar las mismas cosas y esperan respuestas rápidas. Si el colegio demora, puede perder una potencial inscripción.”
+## 6. Demo sugerida
 
-### Minuto 1–2: solución
-“Creamos AdmisIA, un asistente que brinda una primera orientación las 24 horas. No reemplaza al personal del colegio, sino que responde las consultas frecuentes y deriva las situaciones que requieren confirmación.”
+1. “¿Qué niveles tienen?”
+2. “Mi hijo entra a Primaria, ¿qué propuesta ofrecen?”
+3. “¿Y cuánto cuesta?” — debe mantener el contexto de Primaria.
+4. “¿Tienen vacante?” — debe derivar a Admisiones.
+5. Mostrar “Nueva consulta” para explicar cómo se borra la memoria temporal.
 
-### Minuto 2–4: cómo funciona
-Mostrar la arquitectura: frontend → backend → Gemini → respuesta. Explicar que la API key está únicamente en el backend y que el frontend nunca accede a ella.
+## 7. Frase de cierre
 
-### Minuto 4–6: prompt
-Mostrar `gemini.service.js` o `api/chat.js` y señalar rol, objetivo, contexto, estilo, restricciones y estructura. Explicar que estas instrucciones reducen respuestas inventadas y limitan a la IA a información autorizada.
-
-### Minuto 6–8: demo
-Probar tres preguntas:
-- “¿Cuál es la propuesta educativa?”
-- “Mi hijo entra a Primaria, ¿cuánto cuesta?”
-- “¿Tienen vacantes para Primaria?”
-
-La tercera es importante: la IA debería explicar que no puede asegurar una vacante y que debe confirmarla Admisiones.
-
-### Cierre
-“El valor del proyecto no es solamente usar Gemini, sino integrarlo dentro de un flujo real de atención y controlar su comportamiento mediante contexto y restricciones.”
-
-## Preguntas que pueden hacer en la defensa
-
-**¿Por qué usar IA y no respuestas predefinidas?**  
-Porque un LLM puede interpretar distintas formas de preguntar y responder de manera contextual, sin obligar al usuario a navegar un menú rígido.
-
-**¿Por qué hay un backend?**  
-Para proteger la API key y controlar qué información se envía al modelo.
-
-**¿Cómo evitamos que invente información?**  
-Con un prompt explícito, contexto cerrado y reglas que le indican no inventar datos y derivar a Admisiones cuando algo no está definido.
-
-**¿La IA confirma vacantes?**  
-No. La disponibilidad debe confirmarla una persona del equipo de Admisiones.
-
-**¿Qué mejoraríamos en una versión real?**  
-Conectar una base de datos institucional, integrar formularios de contacto o CRM, agregar analítica de consultas y permitir que el equipo actualice los datos sin modificar código.
+“Desarrollamos una aplicación cuyo backend se comunica con Gemini mediante API. En cada solicitud enviamos el contexto institucional, las reglas y el historial reciente de la conversación. De esa forma el modelo responde dentro del marco definido por el colegio.”
