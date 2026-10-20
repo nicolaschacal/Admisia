@@ -2,8 +2,12 @@ const chatForm = document.getElementById("chat-form");
 const messageInput = document.getElementById("message-input");
 const messagesContainer = document.getElementById("messages");
 const newChatButton = document.getElementById("new-chat");
+const bookingHeaderButton = document.getElementById("booking-header");
 const sendButton = document.getElementById("send-button");
 const quickQuestions = document.querySelectorAll(".quick-question");
+const typingIndicator = document.getElementById("typing-indicator");
+const contactStatus = document.getElementById("contact-status");
+const conversationRoot = messagesContainer.querySelector(".conversation");
 
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:3000/api/chat"
@@ -13,6 +17,7 @@ const HISTORY_KEY = "nubarian_chat_session_history";
 const SESSION_KEY = "nubarian_chat_session_id";
 let conversationHistory = [];
 let sessionId = sessionStorage.getItem(SESSION_KEY);
+
 const params = new URLSearchParams(window.location.search);
 const attribution = {
   utmSource: params.get("utm_source") || "",
@@ -32,55 +37,137 @@ try {
   conversationHistory = [];
 }
 
+function nowLabel() {
+  return new Intl.DateTimeFormat("es-UY", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(new Date());
+}
+
+function stampStaticTimes() {
+  document.querySelectorAll(".message-time:empty").forEach((node) => {
+    node.textContent = nowLabel();
+  });
+}
+
 function saveHistory() {
   conversationHistory = conversationHistory.slice(-10);
   sessionStorage.setItem(HISTORY_KEY, JSON.stringify(conversationHistory));
 }
 
-function addMessage(text, sender, extraClass = "") {
-  const welcome = messagesContainer.querySelector(".welcome-card");
-  if (welcome) welcome.remove();
+function scrollToBottom(behavior = "smooth") {
+  requestAnimationFrame(() => {
+    messagesContainer.scrollTo({
+      top: messagesContainer.scrollHeight,
+      behavior
+    });
+  });
+}
 
+function setTyping(isTyping, label = "escribiendo…") {
+  typingIndicator.hidden = !isTyping;
+  contactStatus.textContent = isTyping ? label : "En línea · Admisiones";
+  contactStatus.classList.toggle("is-typing", isTyping);
+
+  if (isTyping) scrollToBottom("smooth");
+}
+
+function removeWelcomeActions() {
+  const quick = messagesContainer.querySelector(".quick-section");
+  if (quick) quick.remove();
+}
+
+function ensureConversationRoot() {
+  return messagesContainer.querySelector(".conversation") || conversationRoot;
+}
+
+function addMessage(text, sender) {
+  removeWelcomeActions();
+
+  const root = ensureConversationRoot();
   const row = document.createElement("div");
   row.className = `message-row ${sender}`;
 
+  const stack = document.createElement("div");
+  stack.className = "message-stack";
+
   const message = document.createElement("div");
-  const baseClass = sender === "user" ? "user-message" : "assistant-message";
-  message.className = `message ${baseClass} ${extraClass}`.trim();
+  message.className = `message ${sender === "user" ? "user-message" : "assistant-message"}`;
   message.textContent = text;
 
-  row.appendChild(message);
-  messagesContainer.appendChild(row);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  const meta = document.createElement("div");
+  meta.className = "message-meta";
+
+  if (sender === "user") {
+    const delivery = document.createElement("span");
+    delivery.className = "delivery-check";
+    delivery.textContent = "✓✓";
+
+    const time = document.createElement("span");
+    time.textContent = nowLabel();
+
+    meta.append(delivery, time);
+  } else {
+    const author = document.createElement("span");
+    author.textContent = "Admisiones";
+
+    const time = document.createElement("span");
+    time.textContent = nowLabel();
+
+    meta.append(author, time);
+  }
+
+  stack.append(message, meta);
+  row.appendChild(stack);
+  root.appendChild(row);
+
+  scrollToBottom();
   return row;
 }
 
 function addCustomAssistantCard(node) {
-  const welcome = messagesContainer.querySelector(".welcome-card");
-  if (welcome) welcome.remove();
+  removeWelcomeActions();
 
+  const root = ensureConversationRoot();
   const row = document.createElement("div");
   row.className = "message-row assistant";
+
+  const stack = document.createElement("div");
+  stack.className = "message-stack custom-card";
+
   const card = document.createElement("div");
-  card.className = "message assistant-message custom-card";
+  card.className = "message assistant-message";
   card.appendChild(node);
-  row.appendChild(card);
-  messagesContainer.appendChild(row);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  const meta = document.createElement("div");
+  meta.className = "message-meta";
+  meta.innerHTML = `<span>Admisiones</span><span>${nowLabel()}</span>`;
+
+  stack.append(card, meta);
+  row.appendChild(stack);
+  root.appendChild(row);
+
+  scrollToBottom();
   return row;
 }
 
 function restoreConversation() {
   if (!conversationHistory.length) return;
+
+  const welcome = messagesContainer.querySelector(".welcome-card");
+  if (welcome) welcome.remove();
+
   conversationHistory.forEach((item) => {
     if (!item || !item.text) return;
     addMessage(item.text, item.role === "model" ? "assistant" : "user");
   });
+
+  scrollToBottom("auto");
 }
 
 function setLoading(isLoading) {
   sendButton.disabled = isLoading;
-  messageInput.disabled = isLoading;
 }
 
 function isBookingIntent(text) {
@@ -90,23 +177,24 @@ function isBookingIntent(text) {
 async function startBooking() {
   addMessage("Quiero agendar una visita.", "user");
   setLoading(true);
-  const loading = addMessage("Estoy revisando la agenda disponible…", "assistant", "loading");
+  setTyping(true, "revisando agenda…");
 
   try {
     const response = await fetch("/api/booking/availability?days=5");
     const data = await response.json();
-    loading.remove();
 
     if (!response.ok || !data.success) {
       throw new Error(data.message || "No se pudo consultar la agenda.");
     }
+
+    setTyping(false);
 
     if (!data.availability?.length) {
       addMessage("No encontré horarios disponibles en los próximos días. El equipo de Admisiones puede ayudarte a coordinar otra opción.", "assistant");
       return;
     }
 
-    addMessage("Podemos coordinar a partir del día siguiente, entre las 09:00 y las 16:00. Elegí una de estas opciones disponibles:", "assistant");
+    addMessage("Tengo estos horarios disponibles. Elegí el que te quede mejor:", "assistant");
 
     const wrapper = document.createElement("div");
     wrapper.className = "slot-groups";
@@ -114,6 +202,7 @@ async function startBooking() {
     data.availability.forEach((day) => {
       const group = document.createElement("div");
       group.className = "slot-day";
+
       const title = document.createElement("strong");
       title.textContent = day.label;
       group.appendChild(title);
@@ -136,8 +225,9 @@ async function startBooking() {
 
     addCustomAssistantCard(wrapper);
   } catch (error) {
-    loading.remove();
-    addMessage(`No pude consultar la agenda. ${error.message}`, "assistant");
+    setTyping(false);
+    addMessage("No pude consultar la agenda en este momento. Probá nuevamente en unos segundos.", "assistant");
+    console.error("Agenda:", error);
   } finally {
     setLoading(false);
   }
@@ -151,7 +241,7 @@ function showBookingForm(startAt, label) {
 
   const heading = document.createElement("div");
   heading.className = "booking-heading";
-  heading.innerHTML = `<strong>Perfecto. Para confirmar ${label}, necesito estos datos:</strong>`;
+  heading.innerHTML = `<strong>Perfecto. Para reservar ${label}, completá estos datos:</strong>`;
   container.appendChild(heading);
 
   const form = document.createElement("form");
@@ -187,9 +277,11 @@ function showBookingForm(startAt, label) {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = true;
     submit.textContent = "Confirmando…";
+    setTyping(true, "confirmando visita…");
 
     const payload = Object.fromEntries(new FormData(form).entries());
     payload.startAt = startAt;
@@ -204,7 +296,9 @@ function showBookingForm(startAt, label) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+
       const data = await response.json();
+      setTyping(false);
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || "No se pudo confirmar la visita.");
@@ -212,16 +306,19 @@ function showBookingForm(startAt, label) {
 
       container.innerHTML = `
         <div class="booking-success">
-          <strong>Visita confirmada</strong>
+          <strong>✓ Visita confirmada</strong>
           <p>${data.appointment.display}</p>
           <p>Agraciada 2850, Montevideo.</p>
-          <small>Registramos tus datos y notificamos al equipo de Admisiones.</small>
+          <small>La reserva quedó registrada en Admisiones.</small>
         </div>
       `;
-      addMessage("Tu visita quedó registrada. Si necesitás modificarla, comunicate con el Colegio Nubarian al 2208 0628.", "assistant");
+
+      addMessage("¡Listo! Tu visita quedó agendada. Si después necesitás modificarla, podés comunicarte al 2208 0628.", "assistant");
     } catch (error) {
+      setTyping(false);
       submit.disabled = false;
       submit.textContent = "Confirmar visita";
+
       const errorBox = form.querySelector(".booking-error") || document.createElement("div");
       errorBox.className = "booking-error";
       errorBox.textContent = error.message;
@@ -235,11 +332,12 @@ function showBookingForm(startAt, label) {
 
 async function sendMessage(message) {
   setLoading(true);
-  const loadingRow = addMessage("Escribiendo...", "assistant", "loading");
+  setTyping(true);
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
     let response;
 
     try {
@@ -258,7 +356,7 @@ async function sendMessage(message) {
     }
 
     const data = await response.json();
-    loadingRow.remove();
+    setTyping(false);
 
     if (!response.ok || !data.success) {
       throw new Error(data.message || "No pudimos completar la consulta.");
@@ -269,34 +367,33 @@ async function sendMessage(message) {
     conversationHistory.push({ role: "model", text: data.response });
     saveHistory();
   } catch (error) {
-    loadingRow.remove();
-    console.error("Error al comunicarse con el backend:", error);
+    setTyping(false);
+    console.error("Chat:", error);
 
     const friendlyMessage = error?.name === "AbortError"
-      ? "La consulta demoró demasiado y fue cancelada. Probá nuevamente."
-      : `No pude completar la consulta. ${error.message}`;
+      ? "Estoy demorando más de lo normal. Probá nuevamente en unos segundos."
+      : "No pude responder esa consulta en este momento. Probá nuevamente en unos segundos.";
 
     addMessage(friendlyMessage, "assistant");
   } finally {
     setLoading(false);
-    messageInput.focus();
+    messageInput.focus({ preventScroll: true });
   }
 }
 
 async function submitQuestion(text) {
   const cleanText = text.trim();
-  if (!cleanText) return;
+  if (!cleanText || sendButton.disabled) return;
+
+  messageInput.value = "";
+  messageInput.style.height = "auto";
 
   if (isBookingIntent(cleanText)) {
-    messageInput.value = "";
-    messageInput.style.height = "auto";
     await startBooking();
     return;
   }
 
   addMessage(cleanText, "user");
-  messageInput.value = "";
-  messageInput.style.height = "auto";
   await sendMessage(cleanText);
 }
 
@@ -307,7 +404,7 @@ chatForm.addEventListener("submit", async (event) => {
 
 messageInput.addEventListener("input", () => {
   messageInput.style.height = "auto";
-  messageInput.style.height = `${Math.min(messageInput.scrollHeight, 148)}px`;
+  messageInput.style.height = `${Math.min(messageInput.scrollHeight, 112)}px`;
 });
 
 messageInput.addEventListener("keydown", (event) => {
@@ -323,9 +420,12 @@ quickQuestions.forEach((button) => {
       startBooking();
       return;
     }
+
     submitQuestion(button.dataset.question || "");
   });
 });
+
+bookingHeaderButton.addEventListener("click", () => startBooking());
 
 newChatButton.addEventListener("click", () => {
   conversationHistory = [];
@@ -335,4 +435,17 @@ newChatButton.addEventListener("click", () => {
   window.location.reload();
 });
 
+window.addEventListener("wheel", (event) => {
+  if (event.ctrlKey) event.preventDefault();
+}, { passive: false });
+
+window.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && ["+", "-", "=", "0"].includes(event.key)) {
+    event.preventDefault();
+  }
+});
+
+document.addEventListener("gesturestart", (event) => event.preventDefault());
+
+stampStaticTimes();
 restoreConversation();
