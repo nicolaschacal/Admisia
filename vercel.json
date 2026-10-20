@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/crm/:action", "destination": "/api/crm?action=:action" },
     { "source": "/", "destination": "/frontend/index.html" },
     { "source": "/dashboard", "destination": "/frontend/dashboard.html" },
     { "source": "/dashboard/", "destination": "/frontend/dashboard.html" },

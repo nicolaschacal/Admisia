@@ -22,7 +22,7 @@ jobs:
         run: npm install
 
       - name: Check JavaScript syntax
-        run: find api lib server scripts frontend/js -name "*.js" -type f -print0 | xargs -0 -n1 node --check
+        run: find api handlers lib server scripts frontend/js -name "*.js" -type f -print0 | xargs -0 -n1 node --check
 
       - name: Validate JSON
         run: |
