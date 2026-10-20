@@ -9,55 +9,6 @@ const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:3000/api/chat"
   : "/api/chat";
 
-function escapeHtml(text) {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function formatInlineMarkdown(text) {
-  return text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-}
-
-function formatAssistantMessage(text) {
-  const safeText = escapeHtml(text);
-  const lines = safeText.split("\n");
-  let html = "";
-  let inList = false;
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-
-    if (line.startsWith("- ")) {
-      if (!inList) {
-        html += "<ul>";
-        inList = true;
-      }
-      html += `<li>${formatInlineMarkdown(line.slice(2))}</li>`;
-      continue;
-    }
-
-    if (inList) {
-      html += "</ul>";
-      inList = false;
-    }
-
-    if (!line) {
-      html += "<br>";
-      continue;
-    }
-
-    html += `<p>${formatInlineMarkdown(line)}</p>`;
-  }
-
-  if (inList) html += "</ul>";
-
-  return html;
-}
-
 function addMessage(text, sender, extraClass = "") {
   const welcome = messagesContainer.querySelector(".welcome");
   if (welcome) welcome.remove();
@@ -67,14 +18,7 @@ function addMessage(text, sender, extraClass = "") {
 
   const message = document.createElement("div");
   message.className = `message ${extraClass}`.trim();
-
-  const shouldRenderMarkdown = sender === "assistant" && extraClass !== "loading";
-
-  if (shouldRenderMarkdown) {
-    message.innerHTML = formatAssistantMessage(text);
-  } else {
-    message.textContent = text;
-  }
+  message.textContent = text;
 
   row.appendChild(message);
   messagesContainer.appendChild(row);
