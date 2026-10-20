@@ -47,7 +47,8 @@ async function sendMessage(message) {
     loadingRow.remove();
 
     if (!response.ok || !data.success) {
-      throw new Error(data.message || "Error del servidor");
+      const detail = data.detail ? ` Detalle: ${data.detail}` : "";
+      throw new Error((data.message || "Error del servidor") + detail);
     }
 
     addMessage(data.response, "assistant");
@@ -55,7 +56,7 @@ async function sendMessage(message) {
     loadingRow.remove();
     console.error("Error al comunicarse con el backend:", error);
     addMessage(
-      "No pude conectarme con el asistente en este momento. Probá nuevamente en unos segundos.",
+      `No pude completar la consulta. ${error.message}`,
       "assistant"
     );
   } finally {
