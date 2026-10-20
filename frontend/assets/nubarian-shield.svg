@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" role="img" aria-labelledby="title desc">
+<title id="title">Colegio Nubarian</title>
+<desc id="desc">Escudo estilizado azul y naranja del Colegio Nubarian</desc>
+<rect width="240" height="300" fill="white"/>
+<path d="M45 105 L72 90 M195 105 L168 90" fill="none" stroke="#1014e8" stroke-width="9" stroke-linecap="round"/>
+<path d="M45 105 L45 197 C45 237 76 264 120 270 C164 264 195 237 195 197 L195 105" fill="none" stroke="#1014e8" stroke-width="10"/>
+<path d="M53 112 L76 99 M187 112 L164 99" fill="none" stroke="#ff7300" stroke-width="4"/>
+<path d="M53 112 L53 195 C53 230 81 252 120 258 C159 252 187 230 187 195 L187 112" fill="none" stroke="#ff7300" stroke-width="4"/>
+<path d="M92 112 C78 82 87 66 101 44 C113 26 116 12 111 0 C133 24 137 46 126 68 C140 55 143 40 139 24 C164 49 174 78 160 111" fill="none" stroke="#ff4f00" stroke-width="10" stroke-linecap="round"/>
+<path d="M156 112 C171 91 169 68 151 49" fill="none" stroke="#ff7300" stroke-width="7" stroke-linecap="round"/>
+<path d="M106 80 C120 67 141 71 148 87 C156 106 142 121 126 121 C111 121 100 111 100 98 C100 87 108 79 118 79" fill="none" stroke="#ff4f00" stroke-width="8" stroke-linecap="round"/>
+<path d="M84 118 C104 114 137 114 158 118" fill="none" stroke="#1014e8" stroke-width="9"/>
+<path d="M93 125 L93 198 M147 125 L147 205" fill="none" stroke="#1014e8" stroke-width="10"/>
+<path d="M99 143 C115 148 128 144 137 139 M99 161 C116 166 130 161 140 155 M99 180 C116 185 130 180 140 174" fill="none" stroke="#1014e8" stroke-width="7" stroke-linecap="round"/>
+<path d="M57 154 C76 146 87 135 96 124 M183 154 C164 146 153 135 144 124" fill="none" stroke="#1014e8" stroke-width="7" stroke-linecap="round"/>
+<path d="M64 213 C97 202 122 200 147 205 M176 216 C159 211 151 208 143 205" fill="none" stroke="#1014e8" stroke-width="7" stroke-linecap="round"/>
+</svg>
