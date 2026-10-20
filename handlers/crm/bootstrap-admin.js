@@ -7,11 +7,8 @@ module.exports = async (req, res) => {
     return res.status(405).json({ success: false, message: "Método no permitido." });
   }
 
-  const supplied = String(req.query?.token || "");
-  const expected = String(process.env.ADMIN_BOOTSTRAP_SECRET || "");
-
-  if (!expected || supplied !== expected) {
-    return res.status(401).json({ success: false, message: "No autorizado." });
+  if (process.env.VERCEL_ENV !== "preview") {
+    return res.status(404).json({ success: false, message: "No disponible." });
   }
 
   try {
@@ -31,11 +28,7 @@ module.exports = async (req, res) => {
       [email, hash, "Administrador Nubarian"]
     );
 
-    return res.status(200).json({
-      success: true,
-      email,
-      password
-    });
+    return res.status(200).json({ success: true, email, password });
   } catch (error) {
     console.error("Admin bootstrap error:", error);
     return res.status(500).json({ success: false, message: "No se pudo crear el administrador." });
