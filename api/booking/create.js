@@ -2,6 +2,7 @@ const { withTransaction, query } = require("../../lib/db");
 const { validateSlot, ZONE } = require("../../lib/scheduling");
 const { queueAndTrySend } = require("../../lib/email");
 const { DateTime } = require("luxon");
+const { createCalendarEvent } = require("../../lib/google-calendar");
 
 function clean(value, max = 500) {
   return String(value || "").trim().slice(0, max);
@@ -157,6 +158,35 @@ module.exports = async (req, res) => {
 
     const localStart = DateTime.fromJSDate(new Date(created.appointment.start_at), { zone: "utc" }).setZone(ZONE);
     const admissionsEmail = process.env.ADMISSIONS_EMAIL || "nubarian@nubarian.edu.uy";
+
+    try {
+      const calendarEvent = await createCalendarEvent({
+        startISO: localStart.toISO(),
+        endISO: DateTime.fromJSDate(new Date(created.appointment.end_at), { zone: "utc" }).setZone(ZONE).toISO(),
+        summary: `Admisiones Nubarian · ${created.student.full_name}`,
+        description: [
+          `Adulto responsable: ${created.lead.adult_name}`,
+          `Teléfono: ${created.lead.phone}`,
+          `Correo: ${created.lead.email}`,
+          `Institución anterior: ${created.student.previous_institution || "No indicada"}`
+        ].join("\n"),
+        attendeeEmail: created.lead.email
+      });
+
+      if (calendarEvent?.id) {
+        await query(
+          "UPDATE appointments SET external_calendar_event_id=$2, updated_at=now() WHERE id=$1",
+          [created.appointment.id, calendarEvent.id]
+        );
+      }
+    } catch (calendarError) {
+      console.error("La reserva se creó pero no pudo sincronizarse con Google Calendar:", calendarError.message);
+      await query(
+        `INSERT INTO activities (lead_id,type,description,metadata)
+         VALUES ($1,'calendar_sync_failed','No se pudo sincronizar la entrevista con Google Calendar.',$2::jsonb)`,
+        [created.lead.id, JSON.stringify({ error: String(calendarError.message || calendarError).slice(0,500) })]
+      );
+    }
 
     const schoolBody = [
       "Nueva visita agendada desde AdmisIA",
