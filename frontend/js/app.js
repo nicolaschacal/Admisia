@@ -261,8 +261,7 @@ async function sendMessage(message) {
     loadingRow.remove();
 
     if (!response.ok || !data.success) {
-      const detail = data.detail ? ` Detalle: ${data.detail}` : "";
-      throw new Error((data.message || "Error del servidor") + detail);
+      throw new Error(data.message || "No pudimos completar la consulta.");
     }
 
     addMessage(data.response, "assistant");
