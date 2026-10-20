@@ -357,7 +357,7 @@ function getInstantAnswer(message, history = []) {
   return null;
 }
 
-async function callGeminiModel({ apiKey, model, contents, timeoutMs = 4500 }) {
+async function callGeminiModel({ apiKey, model, contents, timeoutMs = 8000 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -417,15 +417,15 @@ async function callGeminiModel({ apiKey, model, contents, timeoutMs = 4500 }) {
 
 async function askGeminiWithFallback({ apiKey, contents }) {
   const models = [
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite"
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite"
   ];
 
   let lastError;
 
   for (const model of models) {
     try {
-      return await callGeminiModel({ apiKey, model, contents, timeoutMs: 4500 });
+      return await callGeminiModel({ apiKey, model, contents, timeoutMs: 8000 });
     } catch (error) {
       lastError = error;
       const transient =
@@ -476,19 +476,6 @@ module.exports = async (req, res) => {
 
     const instantAnswer = getInstantAnswer(message, history);
 
-    if (instantAnswer) {
-      await Promise.allSettled([
-        userPersistPromise,
-        persistMessage(sessionId, "assistant", instantAnswer)
-      ]);
-
-      return res.status(200).json({
-        success: true,
-        response: instantAnswer,
-        source: "institutional"
-      });
-    }
-
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -515,6 +502,19 @@ module.exports = async (req, res) => {
       });
     } catch (error) {
       console.error("Gemini fallback agotado:", error?.status, error?.message);
+
+      if (instantAnswer) {
+        await Promise.allSettled([
+          userPersistPromise,
+          persistMessage(sessionId, "assistant", instantAnswer)
+        ]);
+
+        return res.status(200).json({
+          success: true,
+          response: instantAnswer,
+          source: "institutional-fallback"
+        });
+      }
 
       await userPersistPromise.catch(() => {});
 
