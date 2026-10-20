@@ -187,3 +187,14 @@ INSERT INTO crm_settings(key, value) VALUES
   ('booking', '{"slotMinutes":30,"openHour":9,"closeHour":16,"minDaysAhead":1,"maxDaysAhead":30,"weekdays":[1,2,3,4,5]}'::jsonb),
   ('followup', '{"daysAfterInterview":2}'::jsonb)
 ON CONFLICT (key) DO NOTHING;
+
+
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS privacy_consent_at timestamptz;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS utm_source text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS utm_medium text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS utm_campaign text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_summary text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_interest_level text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_primary_concern text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_next_action text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_analyzed_at timestamptz;
