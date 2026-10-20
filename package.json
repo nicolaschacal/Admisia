@@ -5,5 +5,8 @@
   "description": "Asistente de admisiones escolares con Gemini - proyecto académico",
   "dependencies": {
     "@google/genai": "^2.25.0"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }
