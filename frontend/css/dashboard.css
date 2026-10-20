@@ -1,3 +1,6 @@
+/* Ensure native hidden always wins over component display rules */
+[hidden] { display: none !important; }
+
 :root {
   --blue: #1014e8;
   --blue-dark: #0a0dab;
