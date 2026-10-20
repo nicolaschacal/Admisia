@@ -2,88 +2,72 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AdmisIA, asistente virtual de admisiones del Colegio Horizonte.">
-  <title>AdmisIA | Colegio Horizonte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Asistente virtual de admisiones del Colegio Nubarian.">
+  <title>Colegio Nubarian | Admisiones</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">H</div>
-        <div>
-          <strong>Colegio Horizonte</strong>
-          <span>Admisiones</span>
+  <main class="chat-shell">
+    <header class="chat-header">
+      <div class="contact-block">
+        <div class="avatar-wrap">
+          <img class="avatar" src="assets/nubarian-shield.png" alt="Escudo Colegio Nubarian">
+        </div>
+        <div class="contact-meta">
+          <h1>Colegio Nubarian</h1>
+          <p>Admisiones · Inicial y Primaria</p>
         </div>
       </div>
 
-      <div class="sidebar-card">
-        <span class="eyebrow">AdmisIA</span>
-        <h2>Tu primera orientación, en cualquier momento.</h2>
-        <p>Información sobre propuesta educativa, horarios, aranceles y proceso de inscripción.</p>
+      <div class="header-actions">
+        <a class="header-link" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">Sitio web</a>
+        <a class="header-link header-link--ghost" href="https://instagram.com/colegionubarian" target="_blank" rel="noreferrer">Instagram</a>
+        <button id="new-chat" class="header-link header-link--button" type="button">Nueva consulta</button>
       </div>
+    </header>
 
-      <div class="levels">
-        <p class="sidebar-label">Niveles</p>
-        <div class="level-item"><span>01</span> Inicial</div>
-        <div class="level-item"><span>02</span> Primaria</div>
-        <div class="level-item"><span>03</span> Secundaria</div>
-      </div>
+    <section id="messages" class="messages" aria-live="polite" aria-label="Chat de admisiones Colegio Nubarian">
+      <div class="welcome-card">
+        <img class="welcome-logo" src="assets/nubarian-shield.png" alt="Colegio Nubarian">
 
-      <div class="sidebar-footer">
-        <span class="dot"></span>
-        Demo académica · datos ficticios
-      </div>
-    </aside>
+        <div class="message-row assistant">
+          <div class="message assistant-message intro-message">Hola, soy el asistente virtual de admisiones del Colegio Nubarian.
 
-    <main class="main">
-      <header class="topbar">
-        <div>
-          <span class="eyebrow">Asistente virtual de admisiones</span>
-          <h1>Conocé el Colegio Horizonte</h1>
+Puedo orientarte sobre:
+- propuesta educativa
+- Inicial y Primaria
+- horarios y modalidades
+- proceso de inscripción
+- costos estimativos de referencia
+
+Si querés, también podés coordinar una visita para conocer las instalaciones.</div>
         </div>
-        <button id="new-chat" class="secondary-button" type="button">Nueva consulta</button>
-      </header>
 
-      <section id="messages" class="messages" aria-live="polite" aria-label="Conversación con AdmisIA">
-        <div class="welcome">
-          <div class="assistant-badge">AI</div>
-          <span class="eyebrow">Hola, soy AdmisIA</span>
-          <h2>Te ayudo a conocer nuestra propuesta antes de coordinar una entrevista.</h2>
-          <p>Podés preguntarme por el enfoque educativo, horarios, costos orientativos o cómo iniciar una inscripción.</p>
-
-          <div class="quick-grid" aria-label="Preguntas sugeridas">
-            <button class="quick-question" type="button" data-question="¿Cuál es la propuesta educativa del colegio?">
-              <span>Propuesta educativa</span>
-              <small>Enfoque, inglés, tecnología y acompañamiento</small>
-            </button>
-            <button class="quick-question" type="button" data-question="¿Cuáles son los aranceles y qué incluyen?">
-              <span>Aranceles</span>
-              <small>Valores de referencia y beneficios</small>
-            </button>
-            <button class="quick-question" type="button" data-question="¿Cómo es el proceso de inscripción?">
-              <span>Inscripciones</span>
-              <small>Pasos para comenzar el proceso de admisión</small>
-            </button>
-            <button class="quick-question" type="button" data-question="¿Qué horarios tienen Inicial, Primaria y Secundaria?">
-              <span>Horarios</span>
-              <small>Jornada por nivel</small>
-            </button>
-          </div>
+        <div class="quick-grid" aria-label="Preguntas sugeridas">
+          <button class="quick-question" type="button" data-question="Quiero conocer la propuesta educativa del colegio.">Propuesta educativa</button>
+          <button class="quick-question" type="button" data-question="¿Qué niveles y horarios tienen?">Niveles y horarios</button>
+          <button class="quick-question" type="button" data-question="¿Cómo es el proceso de inscripción?">Proceso de inscripción</button>
+          <button class="quick-question" type="button" data-question="¿Pueden darme una orientación de costos?">Costos estimativos</button>
+          <button class="quick-question" type="button" data-question="¿Dónde están ubicados y cómo los contacto?">Ubicación y contacto</button>
+          <button class="quick-question" type="button" data-question="Quiero coordinar una visita al colegio.">Agendar visita</button>
         </div>
-      </section>
-
-      <div class="composer-wrap">
-        <form id="chat-form" class="chat-form">
-          <label class="sr-only" for="message-input">Escribí tu consulta</label>
-          <textarea id="message-input" rows="1" maxlength="800" placeholder="Ej.: Mi hijo entra a Primaria, ¿qué propuesta tienen y cuánto cuesta?" required></textarea>
-          <button id="send-button" type="submit" aria-label="Enviar consulta">Enviar</button>
-        </form>
-        <p class="disclaimer">Proyecto académico. La información institucional y económica utilizada en esta demo es ficticia.</p>
       </div>
-    </main>
-  </div>
+    </section>
+
+    <footer class="composer-wrap">
+      <div class="utility-bar">
+        <span>Agraciada 2850 · Montevideo</span>
+        <span>Tel. 2208 0628</span>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <label class="sr-only" for="message-input">Escribí tu consulta</label>
+        <textarea id="message-input" rows="1" maxlength="900" placeholder="Escribí tu mensaje..." required></textarea>
+        <button id="send-button" type="submit" aria-label="Enviar mensaje">Enviar</button>
+      </form>
+      <p class="disclaimer">Asistente de orientación inicial. Los valores económicos son estimativos y la información definitiva se confirma con el equipo de Admisiones luego de conocer la propuesta y las instalaciones.</p>
+    </footer>
+  </main>
 
   <script src="js/app.js"></script>
 </body>
