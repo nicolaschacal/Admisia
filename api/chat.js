@@ -21,8 +21,11 @@ CONTEXTO AUTORIZADO:
 
 ESTILO:
 - Español, cálido, profesional y cercano.
-- Respuestas breves y claras; usá viñetas cuando ayude.
+- Respuestas breves y claras.
+- Usá texto plano. No uses Markdown, asteriscos, encabezados con # ni sintaxis de formato.
+- Podés usar guiones simples para enumerar.
 - Si falta un dato imprescindible, hacé una sola pregunta aclaratoria.
+- Si ya existe historial de conversación, continuá naturalmente desde ese contexto y no vuelvas a saludar ni a presentarte salvo que sea necesario.
 
 REGLAS:
 - Usá únicamente la información de este contexto.
@@ -41,7 +44,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { message } = req.body || {};
+    const { message, history = [] } = req.body || {};
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: "El mensaje no puede estar vacío." });
@@ -50,6 +53,21 @@ module.exports = async (req, res) => {
     if (message.length > 800) {
       return res.status(400).json({ success: false, message: "La consulta es demasiado larga." });
     }
+
+    const safeHistory = Array.isArray(history)
+      ? history
+          .filter((item) =>
+            item &&
+            (item.role === "user" || item.role === "model") &&
+            typeof item.text === "string" &&
+            item.text.trim()
+          )
+          .slice(-10)
+          .map((item) => ({
+            role: item.role,
+            parts: [{ text: item.text.trim().slice(0, 1200) }]
+          }))
+      : [];
 
     const apiKey = process.env.GEMINI_API_KEY;
 
@@ -79,6 +97,7 @@ module.exports = async (req, res) => {
               parts: [{ text: SYSTEM_INSTRUCTION }]
             },
             contents: [
+              ...safeHistory,
               {
                 role: "user",
                 parts: [{ text: message.trim() }]
@@ -132,6 +151,7 @@ module.exports = async (req, res) => {
     const responseText = data?.candidates?.[0]?.content?.parts
       ?.map((part) => part.text || "")
       .join("")
+      .replace(/\*\*/g, "")
       .trim();
 
     if (!responseText) {
