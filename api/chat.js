@@ -67,6 +67,27 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, response: response.text });
   } catch (error) {
     console.error("Error al consultar Gemini:", error);
-    return res.status(500).json({ success: false, message: "No se pudo obtener una respuesta de la IA." });
+
+    const status = Number(error?.status || error?.code) || 500;
+    let detail = String(error?.message || "Error desconocido al consultar Gemini");
+
+    // Nunca exponer la clave aunque una librería la incluyera accidentalmente en el error.
+    const secret = process.env.GEMINI_API_KEY;
+    if (secret) detail = detail.split(secret).join("[CLAVE OCULTA]");
+
+    // Evitar devolver trazas o respuestas gigantes al navegador.
+    detail = detail.replace(/\s+/g, " ").slice(0, 500);
+
+    let friendlyMessage = "Gemini devolvió un error.";
+    if (status === 400) friendlyMessage = "Gemini rechazó la solicitud.";
+    if (status === 401 || status === 403) friendlyMessage = "La clave de Gemini no está autorizada o no es válida.";
+    if (status === 404) friendlyMessage = "El modelo de Gemini configurado no está disponible.";
+    if (status === 429) friendlyMessage = "Se alcanzó temporalmente el límite de uso de Gemini.";
+
+    return res.status(status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      message: friendlyMessage,
+      detail
+    });
   }
 };
