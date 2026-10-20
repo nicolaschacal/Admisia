@@ -1,0 +1,215 @@
+const { withTransaction, query } = require("../../lib/db");
+const { validateSlot, ZONE } = require("../../lib/scheduling");
+const { queueAndTrySend } = require("../../lib/email");
+const { DateTime } = require("luxon");
+
+function clean(value, max = 500) {
+  return String(value || "").trim().slice(0, max);
+}
+
+function inferLevel(birthDate) {
+  if (!birthDate) return null;
+  const birth = DateTime.fromISO(birthDate, { zone: ZONE });
+  if (!birth.isValid) return null;
+  const age = Math.floor(DateTime.now().setZone(ZONE).diff(birth, "years").years);
+  return age <= 5 ? "inicial" : "primaria";
+}
+
+module.exports = async (req, res) => {
+  if (req.method !== "POST") {
+    return res.status(405).json({ success: false, message: "Método no permitido." });
+  }
+
+  try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(503).json({ success: false, message: "La agenda todavía no está configurada." });
+    }
+
+    const {
+      startAt,
+      adultName,
+      email,
+      phone,
+      studentName,
+      birthDate,
+      previousInstitution,
+      comments,
+      sessionId
+    } = req.body || {};
+
+    const required = { startAt, adultName, email, phone, studentName, birthDate };
+    const missing = Object.entries(required).filter(([, value]) => !clean(value)).map(([key]) => key);
+    if (missing.length) {
+      return res.status(400).json({ success: false, message: "Faltan datos obligatorios para confirmar la visita." });
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(clean(email, 200))) {
+      return res.status(400).json({ success: false, message: "El correo electrónico no parece válido." });
+    }
+
+    const slot = await validateSlot(startAt);
+    if (!slot.valid) {
+      return res.status(409).json({ success: false, message: slot.reason });
+    }
+
+    const levelInterest = inferLevel(birthDate);
+
+    const created = await withTransaction(async (client) => {
+      const lockKey = Math.abs(
+        Array.from(String(slot.start.toMillis())).reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
+      );
+      await client.query("SELECT pg_advisory_xact_lock($1)", [lockKey]);
+
+      const overlap = await client.query(
+        `SELECT id FROM appointments
+         WHERE status IN ('scheduled','confirmed')
+           AND start_at < $2::timestamptz
+           AND end_at > $1::timestamptz
+         LIMIT 1`,
+        [slot.start.toUTC().toISO(), slot.end.toUTC().toISO()]
+      );
+
+      if (overlap.rows.length) {
+        const error = new Error("Ese horario acaba de ser reservado por otra familia.");
+        error.code = "SLOT_TAKEN";
+        throw error;
+      }
+
+      let lead = null;
+      const existing = await client.query(
+        `SELECT * FROM leads
+         WHERE lower(email)=lower($1) OR phone=$2
+         ORDER BY created_at DESC LIMIT 1`,
+        [clean(email, 200), clean(phone, 80)]
+      );
+
+      if (existing.rows[0]) {
+        lead = existing.rows[0];
+        const updated = await client.query(
+          `UPDATE leads
+           SET adult_name=$2, email=$3, phone=$4,
+               status='visit_scheduled',
+               level_interest=COALESCE($5, level_interest),
+               last_contact_at=now(),
+               updated_at=now()
+           WHERE id=$1
+           RETURNING *`,
+          [lead.id, clean(adultName, 200), clean(email, 200).toLowerCase(), clean(phone, 80), levelInterest]
+        );
+        lead = updated.rows[0];
+      } else {
+        const inserted = await client.query(
+          `INSERT INTO leads
+             (adult_name,email,phone,status,level_interest,last_contact_at,source)
+           VALUES ($1,$2,$3,'visit_scheduled',$4,now(),'chat')
+           RETURNING *`,
+          [clean(adultName, 200), clean(email, 200).toLowerCase(), clean(phone, 80), levelInterest]
+        );
+        lead = inserted.rows[0];
+      }
+
+      const studentResult = await client.query(
+        `INSERT INTO students
+           (lead_id, full_name, birth_date, previous_institution, comments, level_interest)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         RETURNING *`,
+        [
+          lead.id,
+          clean(studentName, 200),
+          birthDate,
+          clean(previousInstitution, 250) || null,
+          clean(comments, 1500) || null,
+          levelInterest
+        ]
+      );
+      const student = studentResult.rows[0];
+
+      const appointmentResult = await client.query(
+        `INSERT INTO appointments
+           (lead_id, student_id, start_at, end_at, status, source)
+         VALUES ($1,$2,$3,$4,'scheduled','chat')
+         RETURNING *`,
+        [lead.id, student.id, slot.start.toUTC().toISO(), slot.end.toUTC().toISO()]
+      );
+      const appointment = appointmentResult.rows[0];
+
+      if (clean(sessionId, 200)) {
+        await client.query(
+          `UPDATE conversation_sessions
+           SET lead_id=$1, last_message_at=now()
+           WHERE session_key=$2`,
+          [lead.id, clean(sessionId, 200)]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO activities (lead_id,type,description,metadata)
+         VALUES ($1,'appointment_scheduled',$2,$3::jsonb)`,
+        [
+          lead.id,
+          `Visita agendada para ${slot.start.setLocale("es").toFormat("dd/LL/yyyy HH:mm")}.`,
+          JSON.stringify({ appointmentId: appointment.id })
+        ]
+      );
+
+      return { lead, student, appointment };
+    });
+
+    const localStart = DateTime.fromJSDate(new Date(created.appointment.start_at), { zone: "utc" }).setZone(ZONE);
+    const admissionsEmail = process.env.ADMISSIONS_EMAIL || "nubarian@nubarian.edu.uy";
+
+    const schoolBody = [
+      "Nueva visita agendada desde AdmisIA",
+      "",
+      `Fecha: ${localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")}`,
+      `Adulto responsable: ${created.lead.adult_name}`,
+      `Correo: ${created.lead.email}`,
+      `Teléfono: ${created.lead.phone}`,
+      `Estudiante: ${created.student.full_name}`,
+      `Fecha de nacimiento: ${created.student.birth_date}`,
+      `Institución de procedencia: ${created.student.previous_institution || "No indicada"}`,
+      `Comentarios: ${created.student.comments || "Sin comentarios adicionales"}`
+    ].join("\n");
+
+    await queueAndTrySend({
+      leadId: created.lead.id,
+      appointmentId: created.appointment.id,
+      recipient: admissionsEmail,
+      subject: `Nueva visita Nubarian · ${created.student.full_name} · ${localStart.toFormat("dd/LL HH:mm")}`,
+      bodyText: schoolBody
+    });
+
+    const familyBody = [
+      `Hola ${created.lead.adult_name},`,
+      "",
+      "Tu visita al Colegio Nubarian quedó registrada.",
+      `Fecha y hora: ${localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")}`,
+      "Dirección: Agraciada 2850, Montevideo.",
+      "",
+      "El equipo de Admisiones podrá contactarte si necesita confirmar algún detalle."
+    ].join("\n");
+
+    await queueAndTrySend({
+      leadId: created.lead.id,
+      appointmentId: created.appointment.id,
+      recipient: created.lead.email,
+      subject: "Confirmación de visita · Colegio Nubarian",
+      bodyText: familyBody
+    });
+
+    return res.status(201).json({
+      success: true,
+      appointment: {
+        id: created.appointment.id,
+        startAt: created.appointment.start_at,
+        display: localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")
+      }
+    });
+  } catch (error) {
+    console.error("Error creando reserva:", error);
+    if (error.code === "SLOT_TAKEN" || error.constraint === "appointments_no_overlap") {
+      return res.status(409).json({ success: false, message: "Ese horario ya no está disponible. Elegí otra opción." });
+    }
+    return res.status(500).json({ success: false, message: "No se pudo confirmar la visita." });
+  }
+};
