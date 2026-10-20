@@ -135,6 +135,7 @@ async function loadView() {
   if (currentView === "agenda") return loadAgenda();
   if (currentView === "followups") return loadFollowups();
   if (currentView === "inquiries") return loadInquiries();
+  if (currentView === "knowledge") return loadKnowledge();
   if (currentView === "settings") return loadSettings();
 }
 
@@ -466,6 +467,285 @@ async function loadSettings() {
         } catch (error) { alert(error.message); }
       }));
     }
+  } catch (error) {
+    handleViewError(error);
+  }
+}
+
+
+async function loadKnowledge(editId = null) {
+  viewTitle.textContent = "Base de conocimiento";
+  leadSearch.hidden = true;
+  view.innerHTML = '<div class="empty">Cargando información institucional…</div>';
+
+  try {
+    const data = await api("/api/crm/knowledge");
+    const categories = data.categories || [];
+    const items = data.items || [];
+    const selected = editId ? items.find((item) => item.id === editId) : null;
+    const canEdit = currentManager?.role === "admin";
+
+    view.innerHTML = `
+      <div class="knowledge-layout">
+        <section class="section-card knowledge-main">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Contenido que usa el asistente</p>
+              <h2>Base de conocimiento</h2>
+              <p class="muted knowledge-intro">El chat recupera únicamente la información relevante para cada consulta y se la entrega al modelo como contexto.</p>
+            </div>
+            ${canEdit ? '<button id="new-knowledge-item" class="primary">+ Nueva información</button>' : ""}
+          </div>
+
+          <div class="knowledge-toolbar">
+            <input id="knowledge-search" class="search knowledge-search" placeholder="Buscar contenido, etiqueta o categoría…">
+            <select id="knowledge-category-filter" class="knowledge-select">
+              <option value="">Todas las categorías</option>
+              ${categories.map(cat => `<option value="${cat.id}">${esc(cat.name)} (${cat.item_count})</option>`).join("")}
+            </select>
+            <select id="knowledge-status-filter" class="knowledge-select">
+              <option value="">Todos los estados</option>
+              <option value="active">Activo</option>
+              <option value="draft">Borrador</option>
+              <option value="archived">Archivado</option>
+            </select>
+          </div>
+
+          <div id="knowledge-list" class="knowledge-list">
+            ${items.map(item => `
+              <article class="knowledge-card"
+                data-kb-item="${item.id}"
+                data-category="${item.category_id || ""}"
+                data-status="${item.status}"
+                data-search="${esc([item.title,item.summary,item.content,item.category_name,(item.tags||[]).join(" ")].filter(Boolean).join(" ").toLowerCase())}">
+                <div class="knowledge-card-head">
+                  <div>
+                    <span class="knowledge-category">${esc(item.category_name || "Sin categoría")}</span>
+                    <h3>${esc(item.title)}</h3>
+                  </div>
+                  <span class="knowledge-status knowledge-status--${item.status}">${item.status === "active" ? "Activo" : item.status === "draft" ? "Borrador" : "Archivado"}</span>
+                </div>
+                <p>${esc(item.summary || item.content.slice(0,220))}</p>
+                ${item.tags?.length ? `<div class="knowledge-tags">${item.tags.map(tag => `<span>${esc(tag)}</span>`).join("")}</div>` : ""}
+                <div class="knowledge-card-foot">
+                  <span>Actualizado ${fmtDate(item.updated_at)}</span>
+                  ${canEdit ? `
+                    <div class="inline-actions">
+                      <button class="mini-btn" data-kb-edit="${item.id}">Editar</button>
+                      <button class="mini-btn ${item.status === "archived" ? "success" : "danger"}" data-kb-toggle="${item.id}" data-kb-status="${item.status}">
+                        ${item.status === "archived" ? "Restaurar" : "Archivar"}
+                      </button>
+                    </div>
+                  ` : ""}
+                </div>
+              </article>
+            `).join("") || '<div class="empty">Todavía no hay información cargada.</div>'}
+          </div>
+        </section>
+
+        <aside class="knowledge-side">
+          ${canEdit ? `
+            <section class="section-card">
+              <div class="section-head">
+                <h2>Categorías</h2>
+              </div>
+              <div class="category-cloud">
+                ${categories.map(cat => `
+                  <span class="category-chip">
+                    ${esc(cat.name)}
+                    <small>${cat.item_count}</small>
+                  </span>
+                `).join("")}
+              </div>
+              <form id="category-form" class="knowledge-form compact">
+                <div class="field">
+                  <label>Nueva categoría</label>
+                  <input name="name" placeholder="Ej.: Becas y beneficios" required maxlength="160">
+                </div>
+                <div class="field">
+                  <label>Descripción</label>
+                  <input name="description" placeholder="Qué tipo de información contiene">
+                </div>
+                <button type="submit" class="secondary">Agregar categoría</button>
+              </form>
+            </section>
+          ` : ""}
+
+          <section class="section-card knowledge-help">
+            <h2>Cómo funciona</h2>
+            <p>1. Cargás información clara y actualizada.</p>
+            <p>2. AdmisIA busca los fragmentos relacionados con cada consulta.</p>
+            <p>3. El LLM recibe solo esos fragmentos y redacta una respuesta natural.</p>
+            <p>4. Si archivás o actualizás un dato, el cambio impacta en las respuestas futuras.</p>
+          </section>
+        </aside>
+      </div>
+
+      ${canEdit ? `
+        <div id="knowledge-editor-backdrop" class="modal-backdrop" ${selected ? "" : "hidden"}>
+          <section class="lead-modal knowledge-editor">
+            <button id="close-knowledge-editor" class="modal-close" aria-label="Cerrar">×</button>
+            <p class="eyebrow">Base de conocimiento</p>
+            <h2>${selected ? "Editar información" : "Nueva información"}</h2>
+            <p class="muted">Escribí la información como fuente institucional. El modelo se encargará de redactarla de forma natural para cada familia.</p>
+
+            <form id="knowledge-item-form" class="knowledge-form">
+              <input type="hidden" name="id" value="${selected?.id || ""}">
+              <div class="form-row">
+                <div class="field">
+                  <label>Título</label>
+                  <input name="title" required maxlength="260" value="${esc(selected?.title || "")}" placeholder="Ej.: Becas para hermanos">
+                </div>
+                <div class="field">
+                  <label>Categoría</label>
+                  <select name="categoryId">
+                    <option value="">Sin categoría</option>
+                    ${categories.map(cat => `<option value="${cat.id}" ${selected?.category_id===cat.id?"selected":""}>${esc(cat.name)}</option>`).join("")}
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Resumen interno</label>
+                <input name="summary" maxlength="1200" value="${esc(selected?.summary || "")}" placeholder="Una línea para identificar rápidamente este contenido">
+              </div>
+
+              <div class="field">
+                <label>Información completa</label>
+                <textarea name="content" rows="11" required maxlength="20000" placeholder="Escribí aquí toda la información que el asistente puede utilizar…">${esc(selected?.content || "")}</textarea>
+              </div>
+
+              <div class="field">
+                <label>Etiquetas <span class="muted">(separadas por coma)</span></label>
+                <input name="tags" value="${esc((selected?.tags || []).join(", "))}" placeholder="inicial, nivel 5, inglés, horarios">
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label>Estado</label>
+                  <select name="status">
+                    <option value="active" ${!selected || selected.status==="active"?"selected":""}>Activo</option>
+                    <option value="draft" ${selected?.status==="draft"?"selected":""}>Borrador</option>
+                    <option value="archived" ${selected?.status==="archived"?"selected":""}>Archivado</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Prioridad</label>
+                  <input name="priority" type="number" min="0" max="1000" value="${selected?.priority ?? 0}">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label>Válido desde <span class="muted">(opcional)</span></label>
+                  <input name="validFrom" type="date" value="${selected?.valid_from ? String(selected.valid_from).slice(0,10) : ""}">
+                </div>
+                <div class="field">
+                  <label>Válido hasta <span class="muted">(opcional)</span></label>
+                  <input name="validUntil" type="date" value="${selected?.valid_until ? String(selected.valid_until).slice(0,10) : ""}">
+                </div>
+              </div>
+
+              <button type="submit" class="primary">Guardar información</button>
+            </form>
+          </section>
+        </div>
+      ` : ""}
+    `;
+
+    const filterKnowledge = () => {
+      const q = (document.getElementById("knowledge-search")?.value || "").trim().toLowerCase();
+      const category = document.getElementById("knowledge-category-filter")?.value || "";
+      const status = document.getElementById("knowledge-status-filter")?.value || "";
+
+      view.querySelectorAll("[data-kb-item]").forEach(card => {
+        const matchesText = !q || card.dataset.search.includes(q);
+        const matchesCategory = !category || card.dataset.category === category;
+        const matchesStatus = !status || card.dataset.status === status;
+        card.hidden = !(matchesText && matchesCategory && matchesStatus);
+      });
+    };
+
+    document.getElementById("knowledge-search")?.addEventListener("input", filterKnowledge);
+    document.getElementById("knowledge-category-filter")?.addEventListener("change", filterKnowledge);
+    document.getElementById("knowledge-status-filter")?.addEventListener("change", filterKnowledge);
+
+    if (!canEdit) return;
+
+    const openEditor = (id = null) => loadKnowledge(id);
+
+    document.getElementById("new-knowledge-item")?.addEventListener("click", () => {
+      const backdrop = document.getElementById("knowledge-editor-backdrop");
+      backdrop.hidden = false;
+    });
+
+    document.getElementById("close-knowledge-editor")?.addEventListener("click", () => {
+      document.getElementById("knowledge-editor-backdrop").hidden = true;
+    });
+
+    document.getElementById("knowledge-editor-backdrop")?.addEventListener("click", (event) => {
+      if (event.target.id === "knowledge-editor-backdrop") event.currentTarget.hidden = true;
+    });
+
+    view.querySelectorAll("[data-kb-edit]").forEach(btn => {
+      btn.addEventListener("click", () => openEditor(btn.dataset.kbEdit));
+    });
+
+    view.querySelectorAll("[data-kb-toggle]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const archived = btn.dataset.kbStatus === "archived";
+        try {
+          await api("/api/crm/knowledge", {
+            method:"POST",
+            body:JSON.stringify({
+              action: archived ? "restore-item" : "archive-item",
+              id: btn.dataset.kbToggle
+            })
+          });
+          await loadKnowledge();
+        } catch (error) {
+          alert(error.message);
+        }
+      });
+    });
+
+    document.getElementById("category-form")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+      try {
+        await api("/api/crm/knowledge", {
+          method:"POST",
+          body:JSON.stringify({ action:"save-category", ...payload })
+        });
+        await loadKnowledge();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    document.getElementById("knowledge-item-form")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = event.currentTarget.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      submit.textContent = "Guardando…";
+
+      const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+      try {
+        await api("/api/crm/knowledge", {
+          method:"POST",
+          body:JSON.stringify({
+            action:"save-item",
+            ...payload,
+            priority:Number(payload.priority || 0)
+          })
+        });
+        await loadKnowledge();
+      } catch (error) {
+        submit.disabled = false;
+        submit.textContent = "Guardar información";
+        alert(error.message);
+      }
+    });
   } catch (error) {
     handleViewError(error);
   }
