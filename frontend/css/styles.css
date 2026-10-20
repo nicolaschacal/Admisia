@@ -265,3 +265,135 @@ a { text-decoration: none; }
   .quick-grid { margin-left: 0; }
   .utility-bar { font-size: 11px; }
 }
+
+.custom-card {
+  width: min(88%, 760px);
+}
+
+.slot-groups {
+  display: grid;
+  gap: 16px;
+}
+
+.slot-day {
+  display: grid;
+  gap: 8px;
+}
+
+.slot-day > strong {
+  text-transform: capitalize;
+  color: var(--ink);
+}
+
+.slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.slot-button {
+  border: 1px solid rgba(13,17,228,0.18);
+  background: #fff;
+  color: var(--blue-dark);
+  padding: 9px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.slot-button:hover {
+  border-color: var(--orange);
+  color: #b64500;
+}
+
+.booking-form-card {
+  display: grid;
+  gap: 14px;
+}
+
+.booking-heading {
+  line-height: 1.5;
+}
+
+.booking-form {
+  display: grid;
+  gap: 12px;
+}
+
+.booking-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.booking-form label span {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.booking-form input,
+.booking-form textarea {
+  width: 100%;
+  border: 1px solid rgba(13,17,228,0.15);
+  border-radius: 12px;
+  padding: 11px 12px;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+}
+
+.booking-form input:focus,
+.booking-form textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(13,17,228,0.08);
+}
+
+.booking-form button {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--orange-2), var(--orange));
+  color: #fff;
+  font-weight: 800;
+}
+
+.booking-form button:disabled {
+  opacity: .6;
+}
+
+.booking-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1ee;
+  color: #a62d15;
+  font-size: 13px;
+}
+
+.booking-success {
+  display: grid;
+  gap: 6px;
+}
+
+.booking-success strong {
+  color: var(--blue-dark);
+  font-size: 18px;
+}
+
+.booking-success small {
+  color: var(--muted);
+}
+
+
+.booking-form .consent-row {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 9px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.booking-form .consent-row input {
+  width: auto;
+  margin-top: 3px;
+}

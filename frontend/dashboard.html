@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>AdmisIA CRM | Colegio Nubarian</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+  <div id="login-screen" class="login-screen">
+    <form id="login-form" class="login-card">
+      <img src="/assets/nubarian-shield.svg" alt="Colegio Nubarian">
+      <h1>AdmisIA CRM</h1>
+      <p>Gestión de admisiones · Colegio Nubarian</p>
+      <label>Correo
+        <input name="email" type="email" autocomplete="username" required>
+      </label>
+      <label>Contraseña
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <div id="login-error" class="form-error" hidden></div>
+      <button type="submit">Ingresar</button>
+    </form>
+  </div>
+
+  <div id="crm-app" class="crm-app" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="/assets/nubarian-shield.svg" alt="">
+        <div>
+          <strong>AdmisIA CRM</strong>
+          <span>Colegio Nubarian</span>
+        </div>
+      </div>
+
+      <nav id="nav" class="nav">
+        <button class="nav-item active" data-view="overview">Resumen</button>
+        <button class="nav-item" data-view="pipeline">Pipeline</button>
+        <button class="nav-item" data-view="agenda">Agenda</button>
+        <button class="nav-item" data-view="followups">Seguimientos</button>
+        <button class="nav-item" data-view="inquiries">Consultas</button>
+        <button class="nav-item" data-view="settings">Configuración</button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div id="manager-name" class="manager-name"></div>
+        <button id="logout-button" class="logout-button">Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Admisiones</p>
+          <h1 id="view-title">Resumen</h1>
+        </div>
+        <div class="topbar-actions">
+          <input id="lead-search" class="search" placeholder="Buscar familia, estudiante, correo…">
+          <button id="refresh-button" class="secondary">Actualizar</button>
+        </div>
+      </header>
+
+      <section id="view" class="view"></section>
+    </main>
+  </div>
+
+  <div id="lead-modal" class="modal-backdrop" hidden>
+    <section class="lead-modal">
+      <button id="close-lead" class="modal-close" aria-label="Cerrar">×</button>
+      <div id="lead-detail"></div>
+    </section>
+  </div>
+
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
