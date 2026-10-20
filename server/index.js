@@ -46,4 +46,11 @@ app.use((req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`AdmisIA CRM escuchando en puerto ${PORT}`);
+
+  if (process.env.DATABASE_URL) {
+    const { processReminders } = require("../lib/reminders");
+    const run = () => processReminders().catch((error) => console.error("Reminder worker:", error));
+    setTimeout(run, 15000);
+    setInterval(run, 60 * 60 * 1000);
+  }
 });
