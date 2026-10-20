@@ -59,7 +59,7 @@ async function generateResponse(message) {
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
+    model: "gemini-3.5-flash-lite",
     config: { systemInstruction: SYSTEM_INSTRUCTION },
     contents: message
   });
