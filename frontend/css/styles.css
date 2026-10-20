@@ -383,3 +383,17 @@ a { text-decoration: none; }
 .booking-success small {
   color: var(--muted);
 }
+
+
+.booking-form .consent-row {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 9px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.booking-form .consent-row input {
+  width: auto;
+  margin-top: 3px;
+}
