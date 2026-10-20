@@ -40,7 +40,12 @@ module.exports = async (req, res) => {
         return res.status(400).json({ success: false, message: "Datos inválidos." });
       }
 
-      const followupDays = Number(process.env.FOLLOWUP_DELAY_DAYS || 2);
+      const followupSetting = await query("SELECT value FROM crm_settings WHERE key='followup'");
+      const followupDays = Number(
+        followupSetting.rows[0]?.value?.daysAfterInterview ??
+        process.env.FOLLOWUP_DELAY_DAYS ??
+        2
+      );
 
       const updated = await withTransaction(async (client) => {
         const current = await client.query("SELECT * FROM appointments WHERE id=$1 FOR UPDATE", [id]);
