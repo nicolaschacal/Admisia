@@ -142,12 +142,81 @@ function conversationText(message, history) {
   return normalizeText(`${previous} ${message}`);
 }
 
-function getInstantAnswer(message, history = []) {
+function recentUserText(history = [], limit = 4) {
+  return Array.isArray(history)
+    ? history
+        .filter((item) => item?.role === "user" && typeof item.text === "string")
+        .slice(-limit)
+        .map((item) => normalizeText(item.text))
+    : [];
+}
+
+function inferConversationTopic(message, history = []) {
+  const current = normalizeText(message);
+  const recent = recentUserText(history, 4);
+  const corpus = [current, ...recent.slice().reverse()];
+
+  const topicMatchers = [
+    ["english", /\b(ingles|anglo)\b/],
+    ["technology", /\b(robotica|steam|tecnologia|informatica)\b/],
+    ["pricing", /\b(precio|precios|cuota|costo|costos|sale|matricula|arancel)\b/],
+    ["schedule", /\b(horario|hora de entrada|hora de salida|jornada)\b/],
+    ["proposal", /\b(propuesta educativa|metodologia|educacion|ensenanza|como trabajan|propuesta)\b/],
+    ["admissions", /\b(inscripcion|inscribir|proceso de ingreso|como ingreso|como anoto)\b/],
+    ["support", /\b(psicolog|psicopedagog|psicomotric|equipo interdisciplinario|apoyo|discapacidad|necesidades especiales)\b/],
+    ["facilities", /\b(instalaciones|laboratorio|comedor|deporte|patio|infraestructura)\b/]
+  ];
+
+  for (const text of corpus) {
+    for (const [topic, matcher] of topicMatchers) {
+      if (matcher.test(text)) return topic;
+    }
+  }
+
+  return null;
+}
+
+function detectEducationalContext(message, history = []) {
   const current = normalizeText(message);
   const context = conversationText(message, history);
 
-  const mentionsPrimaria = /\bprimaria\b|\b[1-6](?:ro|do|to|º|°)?\s*(?:ano|grado)\b/.test(context);
-  const mentionsInicial = /\binicial\b|\bmaternal\b|\bnivel\s*[1-5]\b/.test(context);
+  const levelMatch = current.match(/\bnivel\s*([1-5])\b/);
+  if (levelMatch) {
+    return { cycle: "inicial", level: Number(levelMatch[1]) };
+  }
+
+  if (/\bmaternal\b/.test(current)) {
+    return { cycle: "inicial", level: null };
+  }
+
+  if (/\binicial\b/.test(current)) {
+    return { cycle: "inicial", level: null };
+  }
+
+  const gradeMatch = current.match(/\b([1-6])(?:ro|do|to|º|°)?\s*(?:ano|grado)\b/);
+  if (gradeMatch || /\bprimaria\b/.test(current)) {
+    return { cycle: "primaria", level: gradeMatch ? Number(gradeMatch[1]) : null };
+  }
+
+  if (/\bnivel\s*[1-5]\b|\binicial\b|\bmaternal\b/.test(context)) {
+    return { cycle: "inicial", level: null };
+  }
+
+  if (/\bprimaria\b|\b[1-6](?:ro|do|to|º|°)?\s*(?:ano|grado)\b/.test(context)) {
+    return { cycle: "primaria", level: null };
+  }
+
+  return { cycle: null, level: null };
+}
+
+function getInstantAnswer(message, history = []) {
+  const current = normalizeText(message);
+  const context = conversationText(message, history);
+  const topic = inferConversationTopic(message, history);
+  const education = detectEducationalContext(message, history);
+
+  const mentionsPrimaria = education.cycle === "primaria" || /\bprimaria\b|\b[1-6](?:ro|do|to|º|°)?\s*(?:ano|grado)\b/.test(context);
+  const mentionsInicial = education.cycle === "inicial" || /\binicial\b|\bmaternal\b|\bnivel\s*[1-5]\b/.test(context);
 
   if (
     /\b(2do|2º|2°|segundo)\s*(ano|grado)?\b/.test(current) &&
@@ -174,17 +243,17 @@ function getInstantAnswer(message, history = []) {
     ].join("\n");
   }
 
-  if (/\b(horario|hora de entrada|hora de salida|jornada)\b/.test(current)) {
+  if (topic === "schedule" || /\b(horario|hora de entrada|hora de salida|jornada)\b/.test(current)) {
     if (mentionsPrimaria) {
       return "En Primaria la modalidad es de jornada completa, con horario de referencia de 8:00 a 17:00. También existe extensión horaria de 17:00 a 18:00. El horario definitivo se confirma con Admisiones.";
     }
     if (mentionsInicial) {
-      return "En Inicial existen distintas modalidades según la edad y la propuesta: medio horario, intermedio en Maternal y tiempo completo. Si me decís la edad o el nivel del niño o niña, puedo orientarte mejor.";
+      return "En Inicial existen modalidades de medio horario y tiempo completo. En Maternal también puede haber modalidad intermedia. La extensión de 17:00 a 18:00 está disponible a partir de los 2 años. Para un nivel específico, el horario exacto se confirma con Admisiones.";
     }
     return "Los horarios dependen del nivel y la modalidad. En Primaria la referencia es de 8:00 a 17:00; en Inicial hay opciones de medio horario y tiempo completo. Si me indicás el nivel, te doy el detalle correspondiente.";
   }
 
-  if (/\b(precio|precios|cuota|costo|costos|sale|matricula|arancel)\b/.test(current)) {
+  if (topic === "pricing" || /\b(precio|precios|cuota|costo|costos|sale|matricula|arancel)\b/.test(current)) {
     if (mentionsPrimaria) {
       return [
         "Por política interna, el Colegio Nubarian brinda el detalle económico definitivo luego de que la familia conozca la propuesta y las instalaciones.",
@@ -206,13 +275,13 @@ function getInstantAnswer(message, history = []) {
         "- Tiempo completo: UYU 27.700 mensuales",
         "- Matrícula: UYU 10.500, abonable hasta en 4 cuotas",
         "",
-        "En Maternal los valores varían según la cantidad de horas. Si me indicás la edad o modalidad, te doy la referencia correspondiente."
+        "En Maternal los valores varían según la cantidad de horas. Si me indicás la modalidad, te doy la referencia correspondiente."
       ].join("\n");
     }
     return "Podemos darte una orientación estimativa, aunque por política interna el detalle económico definitivo se comparte luego de conocer el colegio. Decime si te interesa Inicial o Primaria y te paso una referencia.";
   }
 
-  if (/\b(inscripcion|inscribir|proceso de ingreso|como ingreso|como anoto)\b/.test(current)) {
+  if (topic === "admissions" || /\b(inscripcion|inscribir|proceso de ingreso|como ingreso|como anoto)\b/.test(current)) {
     return [
       "El proceso de admisión comienza con una primera consulta y luego una entrevista o visita al colegio.",
       "",
@@ -222,49 +291,67 @@ function getInstantAnswer(message, history = []) {
     ].join("\n");
   }
 
-  if (/\b(propuesta educativa|metodologia|educacion|ensenanza|como trabajan)\b/.test(current)) {
+  if (topic === "proposal") {
+    if (mentionsInicial) {
+      const levelLabel = education.level ? `Nivel ${education.level}` : "Nivel Inicial";
+      return [
+        `En ${levelLabel}, dentro de Inicial, la propuesta combina desarrollo integral, aprendizaje, juego y acompañamiento cercano.`,
+        "",
+        "Incluye expresión artística, música, inglés, un primer acercamiento a informática, Educación Física, Psicomotricidad y trabajo junto al equipo interdisciplinario.",
+        "",
+        "Si querés, también puedo contarte sobre horarios, modalidad o valores estimativos para Inicial."
+      ].join("\n");
+    }
+
+    if (mentionsPrimaria) {
+      return [
+        "En Primaria la propuesta combina formación académica, valores humanos y experiencias interdisciplinarias.",
+        "",
+        "Incluye inglés con certificación ANGLO, informática, robótica y STEAM, Educación Física y Deportes, además del trabajo de docentes curriculares y el equipo interdisciplinario."
+      ].join("\n");
+    }
+
     return [
       "La propuesta del Colegio Nubarian integra tradición, innovación y dinamismo, buscando el desarrollo integral y el disfrute por aprender.",
       "",
-      "Incluye inglés con certificación ANGLO, Educación Física y Deportes, arte y expresión, informática, robótica, ciencias, matemática y experiencias STEAM, junto con un vínculo cercano con las familias."
+      "En Inicial se trabaja con expresión artística, música, inglés, informática inicial, Educación Física y Psicomotricidad. En Primaria se suman inglés con certificación ANGLO, informática, robótica y STEAM, además de Educación Física y Deportes."
     ].join("\n");
   }
 
-  if (/\b(psicolog|psicopedagog|psicomotric|equipo interdisciplinario|apoyo|discapacidad|necesidades especiales)\b/.test(current)) {
+  if (topic === "support" || /\b(psicolog|psicopedagog|psicomotric|equipo interdisciplinario|apoyo|discapacidad|necesidades especiales)\b/.test(current)) {
     return "El colegio cuenta con un equipo interdisciplinario integrado por psicóloga, psicomotricista y psicopedagoga, que trabaja junto a docentes, Dirección y familias. Las necesidades particulares se conversan de forma individual en una entrevista para evaluar el acompañamiento adecuado.";
   }
 
-  if (/\b(instalaciones|laboratorio|comedor|deporte|patio|infraestructura)\b/.test(current)) {
+  if (topic === "facilities" || /\b(instalaciones|laboratorio|comedor|deporte|patio|infraestructura)\b/.test(current)) {
     return "El Colegio Nubarian cuenta con salones amplios e iluminados, espacios artísticos, sala de tecnologías, laboratorio, áreas al aire libre, comedor, cocina y un complejo deportivo integrado al predio. Si querés conocerlos personalmente, puedo ayudarte a coordinar una visita.";
   }
 
-  const asksEnglish = /\b(ingles|anglo)\b/.test(current);
-  const asksTech = /\b(robotica|steam|tecnologia|informatica)\b/.test(current);
+  if (topic === "english" || /\b(ingles|anglo)\b/.test(current)) {
+    if (mentionsInicial) {
+      return [
+        "Sí. En Nivel Inicial el Colegio Nubarian incluye inglés dentro de la propuesta educativa.",
+        "",
+        "En el material institucional de Inicial aparece junto con expresión artística, música y un primer acercamiento a informática.",
+        "",
+        "La certificación ANGLO está explicitada en la propuesta de Primaria. Si querés conocer carga horaria o frecuencia semanal de inglés en Inicial, ese dato conviene confirmarlo con Admisiones."
+      ].join("\n");
+    }
 
-  if (asksEnglish && /\b(inicial|maternal|nivel\s*[1-5])\b/.test(current)) {
-    return [
-      "Sí. En Nivel Inicial el Colegio Nubarian incluye inglés dentro de la propuesta educativa.",
-      "",
-      "En el material institucional de Inicial aparece junto con expresión artística, música y un primer acercamiento a informática.",
-      "",
-      "La certificación ANGLO está explicitada en la propuesta de Primaria. Si querés conocer carga horaria, frecuencia semanal o modalidad específica de inglés en Inicial, ese dato conviene confirmarlo con Admisiones."
-    ].join("\n");
+    if (mentionsPrimaria) {
+      return "Sí. En Primaria la propuesta incluye inglés con certificación ANGLO, además de informática, robótica y experiencias STEAM.";
+    }
+
+    return "Sí. El Colegio Nubarian incluye inglés tanto en Inicial como en Primaria. En Primaria se explicita además la certificación ANGLO. Si me decís qué nivel te interesa, te doy el detalle correspondiente.";
   }
 
-  if (asksEnglish && /\b(primaria|[1-6](?:ro|do|to|º|°)?\s*(?:ano|grado))\b/.test(current)) {
-    return "Sí. En Primaria la propuesta incluye inglés con certificación ANGLO, además de informática, robótica y experiencias STEAM.";
-  }
+  if (topic === "technology" || /\b(robotica|steam|tecnologia|informatica)\b/.test(current)) {
+    if (mentionsInicial) {
+      return "En Inicial hay un primer acercamiento a informática como parte de la propuesta. El material institucional reserva las referencias explícitas a robótica y STEAM para Primaria.";
+    }
 
-  if (asksEnglish) {
-    return "Sí. El Colegio Nubarian incluye inglés tanto en su propuesta educativa como dentro de las áreas específicas. En Inicial se ofrece inglés como parte de la propuesta; en Primaria se explicita además la certificación ANGLO. Si me decís qué nivel te interesa, te doy el detalle correspondiente.";
-  }
-
-  if (asksTech && /\b(inicial|maternal|nivel\s*[1-5])\b/.test(current)) {
-    return "En Inicial hay un primer acercamiento a informática como parte de la propuesta. El material institucional reserva las referencias explícitas a robótica y STEAM para Primaria.";
-  }
-
-  if (asksTech && /\b(primaria|[1-6](?:ro|do|to|º|°)?\s*(?:ano|grado))\b/.test(current)) {
-    return "En Primaria la propuesta incluye informática, robótica y experiencias STEAM, además de inglés con certificación ANGLO.";
+    if (mentionsPrimaria) {
+      return "En Primaria la propuesta incluye informática, robótica y experiencias STEAM, además de inglés con certificación ANGLO.";
+    }
   }
 
   return null;
