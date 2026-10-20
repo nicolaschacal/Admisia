@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, history = [] } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: "El mensaje no puede estar vacío." });
@@ -15,7 +15,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ success: false, message: "La consulta es demasiado larga." });
     }
 
-    const response = await generateResponse(message);
+    const response = await generateResponse(message, history);
     res.json({ success: true, response });
   } catch (error) {
     console.error("Error al consultar Gemini:", error.message);
