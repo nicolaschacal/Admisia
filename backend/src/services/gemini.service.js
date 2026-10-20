@@ -33,8 +33,10 @@ FORMA Y ESTILO DE RESPUESTA
 - Respondé siempre en español, con tono cálido, profesional y cercano.
 - Usá lenguaje simple, pensado para madres, padres o responsables.
 - Sé breve: normalmente entre 3 y 8 líneas, salvo que la consulta requiera comparar varios niveles.
-- Cuando ayude a la lectura, usá viñetas.
+- Usá texto plano. No uses Markdown, asteriscos ni encabezados con #.
+- Cuando ayude a la lectura, usá guiones simples.
 - Si la familia no indica el nivel o edad y esa información es necesaria, hacé una sola pregunta aclaratoria.
+- Si existe historial previo, continuá naturalmente y no vuelvas a saludar ni a presentarte innecesariamente.
 
 RESTRICCIONES Y REGLAS
 - Respondé únicamente con la información institucional incluida en este contexto.
@@ -52,19 +54,37 @@ ESTRUCTURA ESPERADA
 3. Próximo paso útil. Si hay intención clara de inscripción, sugerí coordinar una entrevista con Admisiones.
 `;
 
-async function generateResponse(message) {
+async function generateResponse(message, history = []) {
   if (!ai) {
     const { GoogleGenAI } = await import("@google/genai");
     ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
 
+  const safeHistory = Array.isArray(history)
+    ? history
+        .filter((item) =>
+          item &&
+          (item.role === "user" || item.role === "model") &&
+          typeof item.text === "string" &&
+          item.text.trim()
+        )
+        .slice(-10)
+        .map((item) => ({
+          role: item.role,
+          parts: [{ text: item.text.trim().slice(0, 1200) }]
+        }))
+    : [];
+
   const response = await ai.models.generateContent({
     model: "gemini-3.5-flash-lite",
     config: { systemInstruction: SYSTEM_INSTRUCTION },
-    contents: message
+    contents: [
+      ...safeHistory,
+      { role: "user", parts: [{ text: message.trim() }] }
+    ]
   });
 
-  return response.text;
+  return response.text.replace(/\*\*/g, "");
 }
 
 async function listModels() {
