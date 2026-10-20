@@ -2,70 +2,109 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1116d8">
   <meta name="description" content="Asistente virtual de admisiones del Colegio Nubarian.">
   <title>Colegio Nubarian | Admisiones</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <main class="chat-shell">
+  <main class="chat-app" aria-label="Chat de admisiones del Colegio Nubarian">
     <header class="chat-header">
-      <div class="contact-block">
-        <div class="avatar-wrap">
-          <img class="avatar" src="assets/nubarian-shield.svg" alt="Escudo Colegio Nubarian">
+      <div class="contact">
+        <div class="avatar-wrap" aria-hidden="true">
+          <img class="avatar" src="assets/nubarian-shield.svg" alt="">
+          <span class="online-dot"></span>
         </div>
-        <div class="contact-meta">
+
+        <div class="contact-copy">
           <h1>Colegio Nubarian</h1>
-          <p>Admisiones · Inicial y Primaria</p>
+          <p id="contact-status" class="contact-status">En línea · Admisiones</p>
         </div>
       </div>
 
-      <div class="header-actions">
-        <a class="header-link" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">Sitio web</a>
-        <a class="header-link header-link--ghost" href="https://instagram.com/colegionubarian" target="_blank" rel="noreferrer">Instagram</a>
-        <button id="new-chat" class="header-link header-link--button" type="button">Nueva consulta</button>
+      <div class="header-actions" aria-label="Acciones">
+        <button id="booking-header" class="header-action header-action--primary" type="button" title="Agendar una visita">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3.5 9h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z"/></svg>
+          <span>Agendar visita</span>
+        </button>
+
+        <a class="header-action icon-only" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer" title="Sitio web" aria-label="Sitio web">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+        </a>
+
+        <button id="new-chat" class="header-action icon-only" type="button" title="Nueva conversación" aria-label="Nueva conversación">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
       </div>
     </header>
 
-    <section id="messages" class="messages" aria-live="polite" aria-label="Chat de admisiones Colegio Nubarian">
-      <div class="welcome-card">
-        <img class="welcome-logo" src="assets/nubarian-shield.svg" alt="Colegio Nubarian">
+    <section id="messages" class="messages" aria-live="polite" aria-label="Conversación">
+      <div class="conversation">
+        <div class="day-divider"><span>Hoy</span></div>
 
-        <div class="message-row assistant">
-          <div class="message assistant-message intro-message">Hola, soy el asistente virtual de admisiones del Colegio Nubarian.
+        <div class="welcome-card">
+          <div class="message-row assistant">
+            <div class="message-stack">
+              <div class="message assistant-message intro-message">¡Hola! 👋 Soy el asistente de Admisiones del Colegio Nubarian.
 
-Puedo orientarte sobre:
-- propuesta educativa
-- Inicial y Primaria
-- horarios y modalidades
-- proceso de inscripción
-- costos estimativos de referencia
+Puedo ayudarte a conocer la propuesta de Inicial y Primaria, horarios, proceso de inscripción y valores estimativos.
 
-Si querés, también podés coordinar una visita para conocer las instalaciones.</div>
-        </div>
+También puedo mostrarte horarios disponibles para coordinar una visita.</div>
+              <div class="message-meta"><span>Admisiones</span><span class="message-time"></span></div>
+            </div>
+          </div>
 
-        <div class="quick-grid" aria-label="Preguntas sugeridas">
-          <button class="quick-question" type="button" data-question="Quiero conocer la propuesta educativa del colegio.">Propuesta educativa</button>
-          <button class="quick-question" type="button" data-question="¿Qué niveles y horarios tienen?">Niveles y horarios</button>
-          <button class="quick-question" type="button" data-question="¿Cómo es el proceso de inscripción?">Proceso de inscripción</button>
-          <button class="quick-question" type="button" data-question="¿Pueden darme una orientación de costos?">Costos estimativos</button>
-          <button class="quick-question" type="button" data-question="¿Dónde están ubicados y cómo los contacto?">Ubicación y contacto</button>
-          <button class="quick-question" type="button" data-action="booking">Agendar visita</button>
+          <div class="quick-section">
+            <p class="quick-label">¿Qué te gustaría consultar?</p>
+            <div class="quick-grid" aria-label="Preguntas sugeridas">
+              <button class="quick-question" type="button" data-question="Quiero conocer la propuesta educativa del colegio.">
+                <span>Propuesta educativa</span><span aria-hidden="true">›</span>
+              </button>
+              <button class="quick-question" type="button" data-question="¿Qué niveles y horarios tienen?">
+                <span>Niveles y horarios</span><span aria-hidden="true">›</span>
+              </button>
+              <button class="quick-question" type="button" data-question="¿Pueden darme una orientación de costos?">
+                <span>Costos estimativos</span><span aria-hidden="true">›</span>
+              </button>
+              <button class="quick-question quick-question--primary" type="button" data-action="booking">
+                <span>Agendar una visita</span><span aria-hidden="true">›</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <footer class="composer-wrap">
-      <div class="utility-bar">
-        <span>Agraciada 2850 · Montevideo</span>
-        <span>Tel. 2208 0628</span>
+    <div id="typing-indicator" class="typing-indicator" hidden aria-live="polite">
+      <div class="typing-bubble" aria-label="Admisiones está escribiendo">
+        <span></span><span></span><span></span>
       </div>
+      <small>escribiendo…</small>
+    </div>
+
+    <footer class="composer">
       <form id="chat-form" class="chat-form">
         <label class="sr-only" for="message-input">Escribí tu consulta</label>
-        <textarea id="message-input" rows="1" maxlength="900" placeholder="Escribí tu mensaje..." required></textarea>
-        <button id="send-button" type="submit" aria-label="Enviar mensaje">Enviar</button>
+        <textarea
+          id="message-input"
+          rows="1"
+          maxlength="900"
+          placeholder="Escribí un mensaje"
+          enterkeyhint="send"
+          autocomplete="off"
+          required
+        ></textarea>
+
+        <button id="send-button" class="send-button" type="submit" aria-label="Enviar mensaje">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 17 8-17 8 3-8-3-8Z"/><path d="M7 12h14"/></svg>
+        </button>
       </form>
-      <p class="disclaimer">Asistente de orientación inicial. Los valores económicos son estimativos y la información definitiva se confirma con el equipo de Admisiones luego de conocer la propuesta y las instalaciones.</p>
+
+      <div class="composer-foot">
+        <span>La información económica es orientativa.</span>
+        <a href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">nubarian.edu.uy</a>
+      </div>
     </footer>
   </main>
 
