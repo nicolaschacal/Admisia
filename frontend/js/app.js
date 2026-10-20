@@ -13,6 +13,12 @@ const HISTORY_KEY = "nubarian_chat_session_history";
 const SESSION_KEY = "nubarian_chat_session_id";
 let conversationHistory = [];
 let sessionId = sessionStorage.getItem(SESSION_KEY);
+const params = new URLSearchParams(window.location.search);
+const attribution = {
+  utmSource: params.get("utm_source") || "",
+  utmMedium: params.get("utm_medium") || "",
+  utmCampaign: params.get("utm_campaign") || ""
+};
 
 if (!sessionId) {
   sessionId = crypto.randomUUID();
@@ -172,6 +178,10 @@ function showBookingForm(startAt, label) {
     <label>Comentarios adicionales
       <textarea name="comments" rows="3" maxlength="1500"></textarea>
     </label>
+    <label class="consent-row">
+      <input name="privacyConsent" type="checkbox" value="true" required>
+      <span>Autorizo el uso de estos datos exclusivamente para gestionar el proceso de admisión y contacto del Colegio Nubarian.</span>
+    </label>
     <button type="submit">Confirmar visita</button>
   `;
 
@@ -184,6 +194,9 @@ function showBookingForm(startAt, label) {
     const payload = Object.fromEntries(new FormData(form).entries());
     payload.startAt = startAt;
     payload.sessionId = sessionId;
+    payload.utmSource = attribution.utmSource;
+    payload.utmMedium = attribution.utmMedium;
+    payload.utmCampaign = attribution.utmCampaign;
 
     try {
       const response = await fetch("/api/booking/create", {
