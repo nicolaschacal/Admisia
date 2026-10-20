@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
           );
         }
 
-        if (status === "completed") {
+        if (status === "completed" && appointment.status !== "completed") {
           const due = DateTime.now().setZone(ZONE).plus({ days: followupDays }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 });
           await client.query(
             `INSERT INTO followups
@@ -82,7 +82,7 @@ module.exports = async (req, res) => {
           );
         }
 
-        if (status === "no_show") {
+        if (status === "no_show" && appointment.status !== "no_show") {
           const due = DateTime.now().setZone(ZONE).plus({ days: 1 }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 });
           await client.query(
             `INSERT INTO followups
