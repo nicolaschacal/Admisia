@@ -33,6 +33,7 @@ const routes = {
   "/api/crm/appointments": require("../api/crm/appointments"),
   "/api/crm/followups": require("../api/crm/followups"),
   "/api/crm/inquiries": require("../api/crm/inquiries"),
+  "/api/crm/analyze-lead": require("../api/crm/analyze-lead"),
   "/api/cron/followups": require("../api/cron/followups")
 };
 
