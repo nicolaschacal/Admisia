@@ -11,7 +11,8 @@ const handlers = {
   "inquiries": require("../handlers/crm/inquiries"),
   "analyze-lead": require("../handlers/crm/analyze-lead"),
   "settings": require("../handlers/crm/settings"),
-  "blocked-slots": require("../handlers/crm/blocked-slots")
+  "blocked-slots": require("../handlers/crm/blocked-slots"),
+  "knowledge": require("../handlers/crm/knowledge")
 };
 
 module.exports = async (req, res) => {
