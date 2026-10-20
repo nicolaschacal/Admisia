@@ -5,29 +5,35 @@ const newChatButton = document.getElementById("new-chat");
 const sendButton = document.getElementById("send-button");
 const quickQuestions = document.querySelectorAll(".quick-question");
 
-const HISTORY_KEY = "admisia_session_history";
-let conversationHistory = [];
-
-try {
-  conversationHistory = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || "[]");
-  if (!Array.isArray(conversationHistory)) conversationHistory = [];
-} catch {
-  conversationHistory = [];
-}
-
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:3000/api/chat"
   : "/api/chat";
 
+const HISTORY_KEY = "nubarian_chat_session_history";
+let conversationHistory = [];
+
+try {
+  const saved = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || "[]");
+  if (Array.isArray(saved)) conversationHistory = saved;
+} catch {
+  conversationHistory = [];
+}
+
+function saveHistory() {
+  conversationHistory = conversationHistory.slice(-10);
+  sessionStorage.setItem(HISTORY_KEY, JSON.stringify(conversationHistory));
+}
+
 function addMessage(text, sender, extraClass = "") {
-  const welcome = messagesContainer.querySelector(".welcome");
+  const welcome = messagesContainer.querySelector(".welcome-card");
   if (welcome) welcome.remove();
 
   const row = document.createElement("div");
   row.className = `message-row ${sender}`;
 
   const message = document.createElement("div");
-  message.className = `message ${extraClass}`.trim();
+  const baseClass = sender === "user" ? "user-message" : "assistant-message";
+  message.className = `message ${baseClass} ${extraClass}`.trim();
   message.textContent = text;
 
   row.appendChild(message);
@@ -37,21 +43,12 @@ function addMessage(text, sender, extraClass = "") {
   return row;
 }
 
-function saveHistory() {
-  conversationHistory = conversationHistory.slice(-10);
-  sessionStorage.setItem(HISTORY_KEY, JSON.stringify(conversationHistory));
-}
-
 function restoreConversation() {
   if (!conversationHistory.length) return;
-
-  const welcome = messagesContainer.querySelector(".welcome");
-  if (welcome) welcome.remove();
-
-  for (const item of conversationHistory) {
-    if (!item || !item.text) continue;
+  conversationHistory.forEach((item) => {
+    if (!item || !item.text) return;
     addMessage(item.text, item.role === "model" ? "assistant" : "user");
-  }
+  });
 }
 
 function setLoading(isLoading) {
@@ -61,12 +58,11 @@ function setLoading(isLoading) {
 
 async function sendMessage(message) {
   setLoading(true);
-  const loadingRow = addMessage("Estoy preparando la información…", "assistant", "loading");
+  const loadingRow = addMessage("Escribiendo...", "assistant", "loading");
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25000);
-
     let response;
 
     try {
@@ -99,11 +95,11 @@ async function sendMessage(message) {
     loadingRow.remove();
     console.error("Error al comunicarse con el backend:", error);
 
-    const message = error?.name === "AbortError"
+    const friendlyMessage = error?.name === "AbortError"
       ? "La consulta demoró demasiado y fue cancelada. Probá nuevamente."
       : `No pude completar la consulta. ${error.message}`;
 
-    addMessage(message, "assistant");
+    addMessage(friendlyMessage, "assistant");
   } finally {
     setLoading(false);
     messageInput.focus();
@@ -113,6 +109,7 @@ async function sendMessage(message) {
 async function submitQuestion(text) {
   const cleanText = text.trim();
   if (!cleanText) return;
+
   addMessage(cleanText, "user");
   messageInput.value = "";
   messageInput.style.height = "auto";
@@ -126,7 +123,7 @@ chatForm.addEventListener("submit", async (event) => {
 
 messageInput.addEventListener("input", () => {
   messageInput.style.height = "auto";
-  messageInput.style.height = `${Math.min(messageInput.scrollHeight, 150)}px`;
+  messageInput.style.height = `${Math.min(messageInput.scrollHeight, 148)}px`;
 });
 
 messageInput.addEventListener("keydown", (event) => {
