@@ -207,6 +207,7 @@ async function loadPipeline() {
                 <strong>${esc(lead.student_name || lead.adult_name || "Sin nombre")}</strong>
                 <small>${esc(lead.adult_name || "")}</small>
                 <small>${esc(lead.level_interest || "nivel sin definir")}</small>
+                ${lead.ai_interest_level ? `<small>IA: ${esc(lead.ai_interest_level)}</small>` : ""}
                 ${lead.next_appointment ? `<small>Visita: ${fmtDate(lead.next_appointment)}</small>` : ""}
                 ${lead.next_followup ? `<small>Seguimiento: ${fmtDate(lead.next_followup)}</small>` : ""}
               </div>
@@ -362,6 +363,16 @@ async function openLead(id) {
           <p><strong>Nacimiento:</strong> ${esc(student.birth_date || "—")}</p>
           <p><strong>Institución anterior:</strong> ${esc(student.previous_institution || "—")}</p>
           <p><strong>Comentarios:</strong> ${esc(student.comments || "—")}</p>
+          <p><strong>Origen:</strong> ${esc([l.utm_source,l.utm_medium,l.utm_campaign].filter(Boolean).join(" / ") || l.source || "—")}</p>
+        </div>
+
+        <div class="detail-box">
+          <h3>Lectura IA</h3>
+          <p><strong>Interés:</strong> ${esc(l.ai_interest_level || "Sin analizar")}</p>
+          <p><strong>Resumen:</strong> ${esc(l.ai_summary || "Todavía no hay análisis interno.")}</p>
+          <p><strong>Principal foco:</strong> ${esc(l.ai_primary_concern || "—")}</p>
+          <p><strong>Siguiente acción sugerida:</strong> ${esc(l.ai_next_action || "—")}</p>
+          <button id="analyze-lead" class="secondary">Analizar con IA</button>
         </div>
 
         <div class="detail-box">
@@ -411,6 +422,23 @@ async function openLead(id) {
       const d = new Date(l.next_action_at);
       document.getElementById("lead-next-action").value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
     }
+
+    document.getElementById("analyze-lead").addEventListener("click", async () => {
+      const button = document.getElementById("analyze-lead");
+      button.disabled = true;
+      button.textContent = "Analizando…";
+      try {
+        await api("/api/crm/analyze-lead", {
+          method:"POST",
+          body:JSON.stringify({ id:l.id })
+        });
+        await openLead(l.id);
+      } catch (error) {
+        alert(error.message);
+        button.disabled = false;
+        button.textContent = "Analizar con IA";
+      }
+    });
 
     document.getElementById("save-lead").addEventListener("click", async () => {
       try {
