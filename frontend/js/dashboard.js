@@ -22,6 +22,7 @@ const STAGES = [
 
 let currentView = "overview";
 let currentLeads = [];
+let currentManager = null;
 
 function esc(value) {
   return String(value ?? "")
@@ -71,6 +72,7 @@ function showLogin() {
 }
 
 function showApp(manager) {
+  currentManager = manager;
   loginScreen.hidden = true;
   crmApp.hidden = false;
   managerName.textContent = manager.name || manager.email;
@@ -133,6 +135,7 @@ async function loadView() {
   if (currentView === "agenda") return loadAgenda();
   if (currentView === "followups") return loadFollowups();
   if (currentView === "inquiries") return loadInquiries();
+  if (currentView === "settings") return loadSettings();
 }
 
 async function loadOverview() {
@@ -298,6 +301,171 @@ async function loadFollowups() {
         await loadFollowups();
       } catch (error) { alert(error.message); }
     }));
+  } catch (error) {
+    handleViewError(error);
+  }
+}
+
+
+async function loadSettings() {
+  viewTitle.textContent = "Configuración";
+  view.innerHTML = '<div class="empty">Cargando configuración…</div>';
+
+  try {
+    const [settingsData, blocksData] = await Promise.all([
+      api("/api/crm/settings"),
+      api("/api/crm/blocked-slots")
+    ]);
+
+    const booking = settingsData.settings.booking || {};
+    const followup = settingsData.settings.followup || {};
+    const isAdmin = currentManager?.role === "admin";
+
+    view.innerHTML = `
+      <div class="detail-grid">
+        <section class="section-card">
+          <div class="section-head">
+            <h2>Agenda de entrevistas</h2>
+            <span class="badge">${isAdmin ? "Administrador" : "Solo lectura"}</span>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>Hora inicial</label>
+              <input id="setting-open" type="number" min="0" max="23" value="${booking.openHour ?? 9}" ${isAdmin ? "" : "disabled"}>
+            </div>
+            <div class="field">
+              <label>Última hora ofrecida</label>
+              <input id="setting-close" type="number" min="0" max="23" value="${booking.closeHour ?? 16}" ${isAdmin ? "" : "disabled"}>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>Duración / intervalo</label>
+              <select id="setting-slot" ${isAdmin ? "" : "disabled"}>
+                ${[15,20,30,45,60].map(v => `<option value="${v}" ${Number(booking.slotMinutes||30)===v?"selected":""}>${v} minutos</option>`).join("")}
+              </select>
+            </div>
+            <div class="field">
+              <label>Días mínimos de anticipación</label>
+              <input id="setting-min-days" type="number" min="0" max="30" value="${booking.minDaysAhead ?? 1}" ${isAdmin ? "" : "disabled"}>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>Máximo de días visibles</label>
+              <input id="setting-max-days" type="number" min="1" max="180" value="${booking.maxDaysAhead ?? 30}" ${isAdmin ? "" : "disabled"}>
+            </div>
+            <div class="field">
+              <label>Seguimiento luego de entrevista</label>
+              <input id="setting-followup-days" type="number" min="0" max="60" value="${followup.daysAfterInterview ?? 2}" ${isAdmin ? "" : "disabled"}>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Días habilitados</label>
+            <div class="inline-actions">
+              ${[
+                [1,"Lun"],[2,"Mar"],[3,"Mié"],[4,"Jue"],[5,"Vie"],[6,"Sáb"],[7,"Dom"]
+              ].map(([v,label]) => `
+                <label class="badge">
+                  <input class="weekday-checkbox" type="checkbox" value="${v}"
+                    ${(booking.weekdays || [1,2,3,4,5]).includes(v) ? "checked" : ""}
+                    ${isAdmin ? "" : "disabled"}>
+                  ${label}
+                </label>
+              `).join("")}
+            </div>
+          </div>
+
+          ${isAdmin ? '<button id="save-settings" class="primary">Guardar configuración</button>' : ""}
+        </section>
+
+        <section class="section-card">
+          <div class="section-head"><h2>Bloqueos de agenda</h2></div>
+          <p class="muted">Usalos para feriados, reuniones internas o cualquier franja que no deba ofrecerse.</p>
+
+          ${isAdmin ? `
+            <div class="form-row">
+              <div class="field"><label>Desde</label><input id="block-start" type="datetime-local"></div>
+              <div class="field"><label>Hasta</label><input id="block-end" type="datetime-local"></div>
+            </div>
+            <div class="field"><label>Motivo</label><input id="block-reason" placeholder="Ej.: Jornada docente"></div>
+            <button id="create-block" class="secondary">Bloquear horario</button>
+          ` : ""}
+
+          <div id="block-list" style="margin-top:16px">
+            ${blocksData.blocks.length ? blocksData.blocks.map(b => `
+              <div class="followup-card">
+                <div>
+                  <strong>${fmtDate(b.start_at)} → ${fmtDate(b.end_at)}</strong>
+                  <div class="followup-meta">${esc(b.reason || "Bloqueo manual")}</div>
+                </div>
+                ${isAdmin ? `<button class="mini-btn danger" data-block-delete="${b.id}">Eliminar</button>` : ""}
+              </div>
+            `).join("") : '<div class="empty">No hay bloqueos próximos.</div>'}
+          </div>
+        </section>
+      </div>
+    `;
+
+    if (isAdmin) {
+      document.getElementById("save-settings").addEventListener("click", async () => {
+        const weekdays = [...document.querySelectorAll(".weekday-checkbox:checked")].map(el => Number(el.value));
+        try {
+          await api("/api/crm/settings", {
+            method:"POST",
+            body:JSON.stringify({
+              booking:{
+                openHour:Number(document.getElementById("setting-open").value),
+                closeHour:Number(document.getElementById("setting-close").value),
+                slotMinutes:Number(document.getElementById("setting-slot").value),
+                minDaysAhead:Number(document.getElementById("setting-min-days").value),
+                maxDaysAhead:Number(document.getElementById("setting-max-days").value),
+                weekdays
+              },
+              followup:{
+                daysAfterInterview:Number(document.getElementById("setting-followup-days").value)
+              }
+            })
+          });
+          alert("Configuración guardada.");
+          await loadSettings();
+        } catch (error) { alert(error.message); }
+      });
+
+      document.getElementById("create-block").addEventListener("click", async () => {
+        const start = document.getElementById("block-start").value;
+        const end = document.getElementById("block-end").value;
+        const reason = document.getElementById("block-reason").value;
+        if (!start || !end) return alert("Elegí fecha y hora de inicio y fin.");
+        try {
+          await api("/api/crm/blocked-slots", {
+            method:"POST",
+            body:JSON.stringify({
+              action:"create",
+              startAt:new Date(start).toISOString(),
+              endAt:new Date(end).toISOString(),
+              reason
+            })
+          });
+          await loadSettings();
+        } catch (error) { alert(error.message); }
+      });
+
+      view.querySelectorAll("[data-block-delete]").forEach(btn => btn.addEventListener("click", async () => {
+        if (!confirm("¿Eliminar este bloqueo?")) return;
+        try {
+          await api("/api/crm/blocked-slots", {
+            method:"POST",
+            body:JSON.stringify({ action:"delete", id:btn.dataset.blockDelete })
+          });
+          await loadSettings();
+        } catch (error) { alert(error.message); }
+      }));
+    }
   } catch (error) {
     handleViewError(error);
   }
