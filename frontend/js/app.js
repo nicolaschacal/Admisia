@@ -37,11 +37,21 @@ async function sendMessage(message) {
   const loadingRow = addMessage("Estoy preparando la información…", "assistant", "loading");
 
   try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message })
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
+    let response;
+
+    try {
+      response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const data = await response.json();
     loadingRow.remove();
@@ -55,10 +65,12 @@ async function sendMessage(message) {
   } catch (error) {
     loadingRow.remove();
     console.error("Error al comunicarse con el backend:", error);
-    addMessage(
-      `No pude completar la consulta. ${error.message}`,
-      "assistant"
-    );
+
+    const message = error?.name === "AbortError"
+      ? "La consulta demoró demasiado y fue cancelada. Probá nuevamente."
+      : `No pude completar la consulta. ${error.message}`;
+
+    addMessage(message, "assistant");
   } finally {
     setLoading(false);
     messageInput.focus();
