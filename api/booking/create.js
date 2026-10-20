@@ -35,13 +35,21 @@ module.exports = async (req, res) => {
       birthDate,
       previousInstitution,
       comments,
-      sessionId
+      sessionId,
+      privacyConsent,
+      utmSource,
+      utmMedium,
+      utmCampaign
     } = req.body || {};
 
     const required = { startAt, adultName, email, phone, studentName, birthDate };
     const missing = Object.entries(required).filter(([, value]) => !clean(value)).map(([key]) => key);
     if (missing.length) {
       return res.status(400).json({ success: false, message: "Faltan datos obligatorios para confirmar la visita." });
+    }
+
+    if (privacyConsent !== true && privacyConsent !== "true") {
+      return res.status(400).json({ success: false, message: "Necesitamos tu autorización para gestionar los datos de admisión." });
     }
 
     if (!/^\S+@\S+\.\S+$/.test(clean(email, 200))) {
@@ -91,20 +99,42 @@ module.exports = async (req, res) => {
            SET adult_name=$2, email=$3, phone=$4,
                status='visit_scheduled',
                level_interest=COALESCE($5, level_interest),
+               privacy_consent_at=COALESCE(privacy_consent_at, now()),
+               utm_source=COALESCE(NULLIF($6,''), utm_source),
+               utm_medium=COALESCE(NULLIF($7,''), utm_medium),
+               utm_campaign=COALESCE(NULLIF($8,''), utm_campaign),
                last_contact_at=now(),
                updated_at=now()
            WHERE id=$1
            RETURNING *`,
-          [lead.id, clean(adultName, 200), clean(email, 200).toLowerCase(), clean(phone, 80), levelInterest]
+          [
+            lead.id,
+            clean(adultName, 200),
+            clean(email, 200).toLowerCase(),
+            clean(phone, 80),
+            levelInterest,
+            clean(utmSource, 200),
+            clean(utmMedium, 200),
+            clean(utmCampaign, 200)
+          ]
         );
         lead = updated.rows[0];
       } else {
         const inserted = await client.query(
           `INSERT INTO leads
-             (adult_name,email,phone,status,level_interest,last_contact_at,source)
-           VALUES ($1,$2,$3,'visit_scheduled',$4,now(),'chat')
+             (adult_name,email,phone,status,level_interest,privacy_consent_at,
+              utm_source,utm_medium,utm_campaign,last_contact_at,source)
+           VALUES ($1,$2,$3,'visit_scheduled',$4,now(),$5,$6,$7,now(),'chat')
            RETURNING *`,
-          [clean(adultName, 200), clean(email, 200).toLowerCase(), clean(phone, 80), levelInterest]
+          [
+            clean(adultName, 200),
+            clean(email, 200).toLowerCase(),
+            clean(phone, 80),
+            levelInterest,
+            clean(utmSource, 200) || null,
+            clean(utmMedium, 200) || null,
+            clean(utmCampaign, 200) || null
+          ]
         );
         lead = inserted.rows[0];
       }
