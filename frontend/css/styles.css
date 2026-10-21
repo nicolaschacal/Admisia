@@ -1446,3 +1446,313 @@ body.keyboard-open .messages {
     height: 21px;
   }
 }
+
+
+/* Fixed business profile: no nested scrolling */
+.business-profile {
+  position: fixed !important;
+  inset: 0;
+  overflow: hidden !important;
+}
+
+.business-profile-shell {
+  height: 100%;
+  overflow: hidden;
+}
+
+.business-profile-scroll {
+  min-height: 0;
+  overflow: hidden !important;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 7px;
+  padding: 8px 10px 10px;
+}
+
+.business-profile-scroll > .profile-hero,
+.business-profile-scroll > .profile-actions,
+.business-profile-scroll > .profile-info-card,
+.business-profile-scroll > .profile-disclaimer {
+  width: min(680px, 100%);
+  margin: 0 auto;
+}
+
+.profile-hero {
+  padding: 0 10px 8px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(28,39,69,.06);
+}
+
+.profile-cover {
+  height: 72px;
+  margin: 0 -10px;
+}
+
+.profile-cover-logo {
+  width: 110px;
+  height: 110px;
+}
+
+.profile-avatar-large {
+  width: 68px;
+  height: 68px;
+  margin: -35px auto 5px;
+  border-width: 3px;
+}
+
+.profile-avatar-large img {
+  width: 53px;
+  height: 53px;
+}
+
+.profile-hero h2 {
+  font-size: 20px;
+}
+
+.profile-hero > p {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.profile-actions {
+  gap: 7px;
+}
+
+.profile-action {
+  min-height: 54px;
+  padding: 7px 5px;
+  gap: 3px;
+  border-radius: 13px;
+  font-size: 10.5px;
+}
+
+.profile-action-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.profile-action-icon svg,
+.profile-contact-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.profile-info-card {
+  border-radius: 13px;
+}
+
+.profile-info-row {
+  padding: 8px 11px;
+  gap: 2px;
+}
+
+.profile-info-row > strong,
+.profile-contact-row strong,
+.profile-social-row strong {
+  font-size: 12px;
+}
+
+.profile-info-row > span:not(.profile-info-kicker) {
+  font-size: 10.5px;
+}
+
+.profile-info-kicker {
+  font-size: 9px;
+}
+
+.profile-open-status {
+  font-size: 12px;
+}
+
+.profile-hours > small {
+  font-size: 9px;
+}
+
+.profile-contact-row,
+.profile-social-row {
+  min-height: 42px;
+  padding: 6px 10px;
+  grid-template-columns: 28px minmax(0,1fr) 14px;
+  gap: 7px;
+}
+
+.profile-contact-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.profile-contact-row small,
+.profile-social-row small {
+  font-size: 9px;
+}
+
+.profile-social-mark {
+  width: 25px;
+  height: 25px;
+  font-size: 14px;
+}
+
+.profile-chevron {
+  font-size: 19px;
+}
+
+.profile-disclaimer {
+  padding: 0;
+  font-size: 8.5px;
+}
+
+@media (min-width: 720px) {
+  .business-profile-scroll {
+    grid-template-columns: minmax(0, 410px) minmax(0, 410px);
+    grid-template-areas:
+      "hero hero"
+      "actions actions"
+      "info contact"
+      "social contact"
+      "disclaimer disclaimer";
+    justify-content: center;
+    gap: 9px 12px;
+    padding: 12px 18px 14px;
+  }
+
+  .business-profile-scroll > .profile-hero {
+    grid-area: hero;
+    width: 100%;
+  }
+
+  .business-profile-scroll > .profile-actions {
+    grid-area: actions;
+    width: 100%;
+  }
+
+  .business-profile-scroll > .profile-info-card:nth-of-type(3) {
+    grid-area: info;
+    width: 100%;
+  }
+
+  .business-profile-scroll > .profile-contact-card {
+    grid-area: contact;
+    width: 100%;
+  }
+
+  .business-profile-scroll > .profile-info-card:nth-of-type(5) {
+    grid-area: social;
+    width: 100%;
+  }
+
+  .business-profile-scroll > .profile-disclaimer {
+    grid-area: disclaimer;
+    width: 100%;
+  }
+
+  .profile-cover {
+    height: 94px;
+  }
+
+  .profile-avatar-large {
+    width: 78px;
+    height: 78px;
+    margin-top: -40px;
+  }
+
+  .profile-avatar-large img {
+    width: 61px;
+    height: 61px;
+  }
+
+  .profile-hero h2 {
+    font-size: 22px;
+  }
+
+  .profile-action {
+    min-height: 62px;
+  }
+}
+
+@media (min-width: 1160px) {
+  .business-profile {
+    left: 50% !important;
+    right: auto !important;
+    width: min(1180px, calc(100vw - 36px));
+    transform: translateX(-50%);
+    box-shadow: 0 0 45px rgba(31,43,75,.12);
+  }
+}
+
+@media (max-height: 690px) {
+  .business-profile-scroll {
+    gap: 4px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .profile-cover {
+    height: 48px;
+  }
+
+  .profile-avatar-large {
+    width: 56px;
+    height: 56px;
+    margin-top: -29px;
+  }
+
+  .profile-avatar-large img {
+    width: 43px;
+    height: 43px;
+  }
+
+  .profile-hero {
+    padding-bottom: 5px;
+  }
+
+  .profile-hero h2 {
+    font-size: 17px;
+  }
+
+  .profile-action {
+    min-height: 45px;
+    padding: 4px;
+  }
+
+  .profile-info-row {
+    padding: 5px 9px;
+  }
+
+  .profile-contact-row,
+  .profile-social-row {
+    min-height: 36px;
+    padding: 4px 8px;
+  }
+
+  .profile-disclaimer {
+    display: none;
+  }
+}
+
+/* Desktop composer must not react to VisualViewport keyboard logic. */
+@media (pointer: fine) {
+  .chat-app {
+    top: 0 !important;
+    height: 100vh !important;
+  }
+
+  body.keyboard-open .chat-app {
+    height: 100vh !important;
+  }
+
+  .chat-form {
+    align-items: center;
+  }
+
+  .chat-form textarea {
+    display: block;
+    align-self: center;
+    margin: 0;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    line-height: 22px;
+    transform: none !important;
+  }
+}
