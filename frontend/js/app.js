@@ -9,6 +9,11 @@ const typingIndicator = document.getElementById("typing-indicator");
 const contactStatus = document.getElementById("contact-status");
 const conversationRoot = messagesContainer.querySelector(".conversation");
 const chatApp = document.querySelector(".chat-app");
+const businessProfileTrigger = document.getElementById("business-profile-trigger");
+const businessProfile = document.getElementById("business-profile");
+const businessProfileBack = document.getElementById("business-profile-back");
+const businessShareButton = document.getElementById("business-share");
+const businessOpenStatus = document.getElementById("business-open-status");
 
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:3000/api/chat"
@@ -322,6 +327,89 @@ function showAppointmentCard(appointment = currentAppointment) {
   wrap.append(eyebrow, title, subtitle, actions);
   addCustomAssistantCard(wrap, "appointment-card-row");
 }
+
+function updateBusinessOpenStatus() {
+  if (!businessOpenStatus) return;
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Montevideo",
+    weekday: "short",
+    hour: "2-digit",
+    hour12: false
+  }).formatToParts(new Date());
+
+  const weekday = parts.find((part) => part.type === "weekday")?.value;
+  const hour = Number(parts.find((part) => part.type === "hour")?.value);
+  const isWeekday = ["Mon","Tue","Wed","Thu","Fri"].includes(weekday);
+  const isOpen = isWeekday && hour >= 8 && hour < 18;
+
+  businessOpenStatus.textContent = isOpen ? "Abierto ahora" : "Horario de atención";
+  businessOpenStatus.classList.toggle("is-closed", !isOpen);
+}
+
+function openBusinessProfile() {
+  if (!businessProfile) return;
+  messageInput.blur();
+  businessProfile.hidden = false;
+  businessProfile.setAttribute("aria-hidden", "false");
+  updateBusinessOpenStatus();
+
+  requestAnimationFrame(() => {
+    businessProfile.classList.add("is-open");
+    businessProfileBack?.focus({ preventScroll: true });
+  });
+}
+
+function closeBusinessProfile() {
+  if (!businessProfile || businessProfile.hidden) return;
+
+  businessProfile.classList.remove("is-open");
+  businessProfile.setAttribute("aria-hidden", "true");
+
+  setTimeout(() => {
+    businessProfile.hidden = true;
+    businessProfileTrigger?.focus({ preventScroll: true });
+  }, 240);
+}
+
+async function shareBusinessProfile() {
+  const shareData = {
+    title: "Colegio Nubarian",
+    text: "Colegio Nubarian · Admisiones · Inicial y Primaria",
+    url: "https://nubarian.edu.uy"
+  };
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareData.url);
+    businessShareButton?.classList.add("is-success");
+    const original = businessShareButton?.querySelector("span:last-child");
+    if (original) original.textContent = "Copiado";
+
+    setTimeout(() => {
+      businessShareButton?.classList.remove("is-success");
+      if (original) original.textContent = "Compartir";
+    }, 1400);
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      console.error("No se pudo compartir el perfil:", error);
+    }
+  }
+}
+
+businessProfileTrigger?.addEventListener("click", openBusinessProfile);
+businessProfileBack?.addEventListener("click", closeBusinessProfile);
+businessShareButton?.addEventListener("click", shareBusinessProfile);
+
+businessProfile?.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeBusinessProfile();
+});
+
+updateBusinessOpenStatus();
 
 function finishConversationBootstrap({ showWelcome = false } = {}) {
   const loading = document.getElementById("conversation-loading");

@@ -1042,3 +1042,407 @@ body.keyboard-open .messages {
     font-size: 11.5px;
   }
 }
+
+
+/* Business profile */
+.contact-button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contact-button:focus-visible {
+  outline: 2px solid rgba(255,255,255,.85);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.contact-copy h1 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.institutional-badge {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  display: inline-grid;
+  place-items: center;
+  color: #fff;
+}
+
+.institutional-badge svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.institutional-badge svg path:first-child {
+  fill: #1687ff;
+  stroke: none;
+}
+
+.institutional-badge svg path:last-child {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.business-profile {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  background: #eef0f4;
+}
+
+.business-profile-shell {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  transform: translateX(100%);
+  transition: transform .24s cubic-bezier(.22,.78,.26,1);
+  background: #eef0f4;
+}
+
+.business-profile.is-open .business-profile-shell {
+  transform: translateX(0);
+}
+
+.business-profile-topbar {
+  position: relative;
+  z-index: 3;
+  min-height: 60px;
+  padding: max(8px, env(safe-area-inset-top)) 13px 8px;
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  color: #fff;
+  background: linear-gradient(112deg, var(--brand-blue) 0%, #4935b8 48%, #d65d45 78%, var(--brand-orange) 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,.08);
+}
+
+.business-profile-topbar strong {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 760;
+}
+
+.profile-back {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255,255,255,.09);
+}
+
+.profile-back svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.business-profile-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 20% 8%, rgba(21,27,232,.05), transparent 29%),
+    radial-gradient(circle at 82% 28%, rgba(255,106,0,.05), transparent 26%),
+    #eef0f4;
+}
+
+.profile-hero {
+  position: relative;
+  padding: 0 18px 22px;
+  text-align: center;
+  background: #fff;
+  border-bottom: 1px solid rgba(22,37,65,.07);
+}
+
+.profile-cover {
+  height: 150px;
+  margin: 0 -18px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(120deg, rgba(18,24,210,.90), rgba(106,55,165,.80) 48%, rgba(255,106,0,.82)),
+    #2730c7;
+}
+
+.profile-cover-logo {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  opacity: .25;
+  filter: blur(2px) saturate(.8);
+  transform: scale(1.55);
+}
+
+.profile-avatar-large {
+  position: relative;
+  z-index: 2;
+  width: 112px;
+  height: 112px;
+  margin: -58px auto 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  border: 5px solid #fff;
+  box-shadow: 0 8px 24px rgba(28,39,69,.16);
+}
+
+.profile-avatar-large img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+}
+
+.profile-hero h2 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  color: #17283e;
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1.12;
+  letter-spacing: -.025em;
+}
+
+.institutional-badge--profile {
+  width: 22px;
+  height: 22px;
+}
+
+.profile-hero > p {
+  margin-top: 6px;
+  color: #818b99;
+  font-size: 13px;
+}
+
+.profile-actions {
+  width: min(680px, calc(100% - 28px));
+  margin: 14px auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.profile-action {
+  min-height: 88px;
+  padding: 12px 7px 10px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 17px;
+  color: #314159;
+  background: #fff;
+  box-shadow: 0 3px 14px rgba(28,39,69,.06);
+  font-size: 12px;
+  font-weight: 690;
+}
+
+.profile-action-icon {
+  width: 33px;
+  height: 33px;
+  display: grid;
+  place-items: center;
+  color: #1687ff;
+}
+
+.profile-action-icon svg,
+.profile-contact-icon svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.profile-info-card {
+  width: min(680px, calc(100% - 28px));
+  margin: 0 auto 12px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 3px 14px rgba(28,39,69,.05);
+}
+
+.profile-info-row {
+  padding: 15px 17px;
+  display: grid;
+  gap: 3px;
+  border-bottom: 1px solid rgba(27,43,69,.07);
+}
+
+.profile-info-row:last-child {
+  border-bottom: 0;
+}
+
+.profile-info-row > strong,
+.profile-contact-row strong,
+.profile-social-row strong {
+  color: #24364d;
+  font-size: 14px;
+  font-weight: 690;
+}
+
+.profile-info-row > span:not(.profile-info-kicker) {
+  color: #647287;
+  font-size: 12px;
+}
+
+.profile-info-kicker {
+  color: #8c96a4;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .045em;
+}
+
+.profile-hours > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.profile-open-status {
+  color: #13a861;
+  font-size: 14px;
+  font-weight: 740;
+}
+
+.profile-hours > small {
+  color: #8b95a3;
+  font-size: 10.5px;
+}
+
+.profile-contact-row,
+.profile-social-row {
+  min-height: 64px;
+  padding: 11px 14px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid rgba(27,43,69,.07);
+}
+
+.profile-contact-row:last-child,
+.profile-social-row:last-child {
+  border-bottom: 0;
+}
+
+.profile-contact-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: #1687ff;
+}
+
+.profile-contact-row > span:nth-child(2),
+.profile-social-row > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.profile-contact-row strong,
+.profile-social-row strong {
+  overflow-wrap: anywhere;
+}
+
+.profile-contact-row small,
+.profile-social-row small {
+  color: #8b95a3;
+  font-size: 10.5px;
+}
+
+.profile-chevron {
+  color: #a2aab5;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.profile-social-mark {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #1687ff;
+  border-radius: 50%;
+  color: #1687ff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.profile-disclaimer {
+  padding: 4px 18px 8px;
+  color: #9ba3ae;
+  text-align: center;
+  font-size: 9.5px;
+}
+
+@media (min-width: 780px) {
+  .profile-cover {
+    height: 185px;
+  }
+
+  .profile-actions {
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 680px) {
+  .institutional-badge {
+    width: 15px;
+    height: 15px;
+  }
+
+  .profile-cover {
+    height: 132px;
+  }
+
+  .profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    margin-top: -52px;
+  }
+
+  .profile-avatar-large img {
+    width: 78px;
+    height: 78px;
+  }
+
+  .profile-hero h2 {
+    font-size: 24px;
+  }
+
+  .institutional-badge--profile {
+    width: 21px;
+    height: 21px;
+  }
+}
