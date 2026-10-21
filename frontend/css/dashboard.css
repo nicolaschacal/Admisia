@@ -367,3 +367,66 @@ tr.clickable:hover td { background: #fafbff; }
     flex-direction: column;
   }
 }
+
+
+/* Public business profile settings */
+.settings-grid .profile-settings-card {
+  grid-column: 1 / -1;
+}
+
+.profile-settings-intro {
+  max-width: 760px;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+.profile-settings-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.profile-settings-group {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfcfe;
+}
+
+.profile-settings-group h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.profile-toggle {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #4f5e73;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.profile-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
+.profile-settings-actions {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#profile-save-status {
+  font-size: 12px;
+}
+
+@media(max-width: 900px) {
+  .profile-settings-columns {
+    grid-template-columns: 1fr;
+  }
+}
