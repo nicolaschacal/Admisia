@@ -194,13 +194,7 @@ function addCustomAssistantCard(node, extraClass = "") {
   const meta = document.createElement("span");
   meta.className = "message-meta message-meta--block";
   meta.innerHTML = `<span class="message-time">${messageTime()}</span>`;
-  const bubbleActions = node.querySelector?.(":scope > .bubble-actions");
-  if (bubbleActions) {
-    card.classList.add("has-actions");
-    bubbleActions.before(meta);
-  } else {
-    card.appendChild(meta);
-  }
+  card.appendChild(meta);
 
   stack.appendChild(card);
   row.appendChild(stack);
@@ -398,7 +392,7 @@ function showAppointmentCard(appointment = currentAppointment) {
   `;
 
   const actions = document.createElement("div");
-  actions.className = "bubble-actions";
+  actions.className = "bubble-actions bubble-actions--pair";
   actions.append(
     bubbleButton("Cómo llegar", { icon: "pin", href: mapHref }),
     bubbleButton("Cambiar horario", { icon: "swap", onClick: () => startReschedule({ echoUser: true }) }),
@@ -954,10 +948,10 @@ function showCancelConfirmation({ echoUser = false } = {}) {
   text.textContent = `¿Cancelar la visita del ${date.toLowerCase()}${time ? ` a las ${time}` : ""}?`;
 
   const actions = document.createElement("div");
-  actions.className = "bubble-actions";
+  actions.className = "bubble-actions bubble-actions--split";
   actions.append(
-    bubbleButton("Sí, cancelar visita", { tone: "danger", onClick: cancelAppointment }),
-    bubbleButton("Mantener visita", { onClick: () => wrapper.closest(".message-row")?.remove() })
+    bubbleButton("Mantener", { onClick: () => wrapper.closest(".message-row")?.remove() }),
+    bubbleButton("Sí, cancelar", { tone: "danger-solid", onClick: cancelAppointment })
   );
 
   wrapper.append(text, actions);
