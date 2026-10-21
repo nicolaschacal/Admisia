@@ -1,8 +1,8 @@
 {
-  "name": "admisia-colegio-nubarian",
+  "name": "admisia",
   "version": "2.0.0",
   "private": true,
-  "description": "CRM de admisiones del Colegio Nubarian con IA, agenda y seguimiento",
+  "description": "Asistente de admisiones con IA para instituciones educativas: chat, agenda y panel de gestión",
   "scripts": {
     "db:migrate": "node scripts/migrate.js",
     "db:create-admin": "node scripts/create-admin.js"

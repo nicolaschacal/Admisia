@@ -1,14 +1,17 @@
 :root {
-  --brand-blue: #151be8;
-  --brand-blue-deep: #1015c8;
-  --brand-orange: #ff6a00;
+  /* Client brand. Overridden at runtime from the business profile. */
+  --brand: #2747d6;
+  --brand-2: var(--brand);
+  --brand-blue: var(--brand);
+  --brand-blue-deep: var(--brand);
+  --brand-orange: var(--brand-2);
   --ink: #1d2d42;
   --muted: #738094;
   --line: rgba(28, 48, 78, 0.10);
   --surface: #ffffff;
   --chat-bg: #f4f1ec;
   --assistant: #ffffff;
-  --user: #171de9;
+  --user: var(--brand);
   --green: #42d392;
   --shadow-soft: 0 5px 18px rgba(25, 39, 73, 0.08);
   --shadow-header: 0 1px 0 rgba(255,255,255,0.10), 0 7px 24px rgba(20,24,130,0.18);
@@ -507,8 +510,8 @@ a {
   border: 0;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #ff5300, #ff7600);
-  box-shadow: 0 4px 10px rgba(255,96,0,.20);
+  background: var(--brand-2);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--brand-2) 25%, transparent);
   transition: transform .15s ease, opacity .15s ease;
 }
 

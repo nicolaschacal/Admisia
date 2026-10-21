@@ -47,9 +47,9 @@ module.exports = async (req, res) => {
       );
 
       if (businessName) {
-        // Fresh install: start from a clean public profile with the buyer's
-        // name, and archive the bundled example content so the assistant only
-        // answers with this business's information.
+        // Fresh install: start from a clean public profile with the
+        // institution's name. Any active content left from a previous setup is
+        // archived; the bundled templates stay as drafts to fill in.
         const profile = {
           name: businessName, category: "Educación", shortDescription: "", statusText: "",
           addressLine1: "", addressLine2: "", mapQuery: "", phoneDisplay: "", phoneE164: "",
@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
            ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()`,
           [JSON.stringify(profile)]
         );
-        await client.query("UPDATE knowledge_items SET status='archived', updated_at=now() WHERE status<>'archived'");
+        await client.query("UPDATE knowledge_items SET status='archived', updated_at=now() WHERE status='active'");
       }
       return created.rows[0];
     });

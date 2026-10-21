@@ -69,7 +69,7 @@ let currentView = "overview";
 let currentManager = null;
 let settingsTab = "start";
 let settingsCache = null;
-let brand = { name: "Panel de admisiones", logo: "/assets/nubarian-shield.svg" };
+let brand = { name: "Panel de admisiones", logo: "" };
 
 /* ---------- Utils ---------- */
 
@@ -183,13 +183,26 @@ function copyToClipboard(text) {
 
 /* ---------- Brand ---------- */
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const DEFAULT_BRAND = "#2747d6";
+
+function initialsLogo(name, color) {
+  const letters = String(name || "").replace(/^(colegio|escuela|liceo|instituto)\s+/i, "")
+    .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "A";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="${color}"/><text x="48" y="50" font-family="-apple-system,Segoe UI,Roboto,Arial,sans-serif" font-size="38" font-weight="600" fill="#fff" text-anchor="middle" dominant-baseline="central">${letters}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 async function loadBrand() {
   try {
-    const data = await api("/api/profile");
-    brand = { name: data.profile?.name || brand.name, logo: data.profile?.logoUrl || brand.logo };
+    const p = (await api("/api/profile")).profile || {};
+    const color = HEX_COLOR.test(p.brandColor || "") ? p.brandColor : "";
+    if (color) document.documentElement.style.setProperty("--brand", color);
+    else document.documentElement.style.removeProperty("--brand");
+    brand = { name: p.name || brand.name, logo: p.logoUrl || initialsLogo(p.name, color || DEFAULT_BRAND) };
   } catch { /* keep defaults */ }
   $$("[data-brand-name]").forEach((node) => { node.textContent = brand.name; });
-  $$(".auth-logo, .brand-logo").forEach((img) => { img.src = brand.logo; });
+  if (brand.logo) $$(".auth-logo, .brand-logo").forEach((img) => { img.src = brand.logo; });
   document.title = `Panel de admisiones · ${brand.name}`;
 }
 
@@ -1030,8 +1043,41 @@ async function renderBusinessTab(panel) {
           <label class="field"><span>Categoría</span><input name="category" value="${esc(p.category || "")}" maxlength="120" placeholder="Educación" ${dis}></label>
           <label class="field span-2"><span>Descripción corta</span><input name="shortDescription" value="${esc(p.shortDescription || "")}" maxlength="260" placeholder="Ej. Inicial y Primaria" ${dis}></label>
           <label class="field span-2"><span>Mensaje destacado</span><input name="statusText" value="${esc(p.statusText || "")}" maxlength="160" placeholder="Ej. Inscripciones abiertas 2027" ${dis}></label>
-          <label class="field span-2"><span>Logo</span><input name="logoUrl" type="url" value="${esc(p.logoUrl || "")}" placeholder="https://…/logo.png" ${dis}><small>Dirección de una imagen cuadrada (PNG o SVG). Si lo dejás vacío se usa el logo incluido.</small></label>
           <label class="check-row span-2"><input type="checkbox" name="badgeEnabled" ${p.badgeEnabled !== false ? "checked" : ""} ${dis}>Mostrar sello de perfil verificado</label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><div><h2>Marca</h2><p>Logo y colores que ven las familias en el chat.</p></div></div>
+        <div class="card-body">
+          <div class="logo-field">
+            <img id="logo-preview" class="logo-preview" alt="Logo actual" src="${esc(p.logoUrl || initialsLogo(p.name, p.brandColor || DEFAULT_BRAND))}">
+            <div class="logo-field-copy">
+              <strong>Logo</strong>
+              <span class="muted small">Imagen cuadrada en PNG, JPG o SVG. Se ajusta automáticamente. Sin logo, se muestran las iniciales.</span>
+              ${editable ? `<div class="form-actions" style="justify-content:flex-start">
+                <label class="btn btn-secondary btn-sm">Subir logo<input id="logo-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
+                <button type="button" id="logo-remove" class="btn btn-ghost btn-sm" ${p.logoUrl ? "" : "hidden"}>Quitar</button>
+              </div>` : ""}
+            </div>
+            <input type="hidden" name="logoUrl" value="${esc(p.logoUrl || "")}">
+          </div>
+          <div class="form-grid">
+            <label class="field"><span>Color principal</span>
+              <span class="color-input"><input type="color" data-color-for="brandColor" value="${esc(p.brandColor || DEFAULT_BRAND)}" ${dis}><input name="brandColor" class="mono" value="${esc(p.brandColor || "")}" placeholder="${DEFAULT_BRAND}" maxlength="7" ${dis}></span>
+              <small>Botones, selección y los mensajes de la familia.</small></label>
+            <label class="field"><span>Color secundario</span>
+              <span class="color-input"><input type="color" data-color-for="secondaryColor" value="${esc(p.secondaryColor || p.brandColor || DEFAULT_BRAND)}" ${dis}><input name="secondaryColor" class="mono" value="${esc(p.secondaryColor || "")}" placeholder="Igual al principal" maxlength="7" ${dis}></span>
+              <small>Botón de enviar y opción destacada para agendar.</small></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><div><h2>Asistente</h2><p>Cómo se presenta y reglas propias de tu institución.</p></div></div>
+        <div class="card-body form-grid">
+          <label class="field span-2"><span>Mensaje de bienvenida</span><textarea name="welcomeMessage" rows="4" maxlength="700" placeholder="¡Hola! 👋 Soy el asistente de admisiones de ${esc(p.name || "tu institución")}. Puedo ayudarte con la propuesta educativa, horarios, proceso de inscripción y costos." ${dis}>${esc(p.welcomeMessage || "")}</textarea><small>Si lo dejás vacío se usa el mensaje de la sugerencia.</small></label>
+          <label class="field span-2"><span>Indicaciones para el asistente</span><textarea name="assistantNotes" rows="4" maxlength="2000" placeholder="Ej. Solo ofrecemos Inicial y Primaria. No informar costos definitivos por chat." ${dis}>${esc(p.assistantNotes || "")}</textarea><small>Reglas que la IA respeta en todas las respuestas. Los datos (precios, horarios) van en la Base de conocimiento.</small></label>
         </div>
       </section>
 
@@ -1072,7 +1118,36 @@ async function renderBusinessTab(panel) {
     </form>`;
 
   if (!editable) return;
-  $("#business-form").addEventListener("submit", async (event) => {
+
+  const form = $("#business-form");
+  const logoInput = form.logoUrl;
+  const preview = $("#logo-preview");
+  const fallbackLogo = () => initialsLogo(form.elements.namedItem("name").value, HEX_COLOR.test(form.brandColor.value) ? form.brandColor.value : DEFAULT_BRAND);
+
+  $("#logo-file").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await prepareLogo(file);
+      logoInput.value = dataUrl;
+      preview.src = dataUrl;
+      $("#logo-remove").hidden = false;
+    } catch (error) { toast(error.message, { error: true }); }
+    event.target.value = "";
+  });
+  $("#logo-remove").addEventListener("click", () => {
+    logoInput.value = "";
+    preview.src = fallbackLogo();
+    $("#logo-remove").hidden = true;
+  });
+
+  $$("[data-color-for]", form).forEach((picker) => {
+    const text = form[picker.dataset.colorFor];
+    picker.addEventListener("input", () => { text.value = picker.value; if (!logoInput.value) preview.src = fallbackLogo(); });
+    text.addEventListener("input", () => { if (HEX_COLOR.test(text.value)) picker.value = text.value; });
+  });
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const fd = new FormData(form);
@@ -1081,12 +1156,48 @@ async function renderBusinessTab(panel) {
     profile.openHour = Number(profile.openHour);
     profile.closeHour = Number(profile.closeHour);
     profile.weekdays = fd.getAll("profileDays").map(Number);
+    for (const key of ["brandColor", "secondaryColor"]) {
+      if (profile[key] && !HEX_COLOR.test(profile[key])) return toast("Los colores van en formato #RRGGBB.", { error: true });
+    }
     try {
       await withBusy($("button[type=submit]", form), "Guardando…", () => saveSettings({ profile }));
       toast("Datos del negocio guardados.");
       loadBrand();
     } catch (error) { toast(error.message, { error: true }); }
   });
+}
+
+// Logos are stored inside the profile, so keep them small: SVG as-is (if
+// light), bitmaps resized to 256px PNG.
+async function prepareLogo(file) {
+  if (file.size > 5 * 1024 * 1024) throw new Error("La imagen es demasiado grande (máximo 5 MB).");
+  const readAsDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+    reader.readAsDataURL(blob);
+  });
+  if (file.type === "image/svg+xml" && file.size <= 200 * 1024) return readAsDataUrl(file);
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("El archivo no es una imagen válida."));
+      image.src = url;
+    });
+    const size = 256;
+    const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight, 1);
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = size; canvas.height = size;
+    canvas.getContext("2d").drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+    return canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function hourOptions(selected, from, to) {

@@ -7,7 +7,7 @@ const PORT = Number(process.env.PORT || 3000);
 const frontend = path.join(__dirname, "../frontend");
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "1mb" }));
 app.use("/css", express.static(path.join(frontend, "css")));
 app.use("/js", express.static(path.join(frontend, "js")));
 app.use("/assets", express.static(path.join(frontend, "assets")));

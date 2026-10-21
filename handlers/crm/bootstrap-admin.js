@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
                      role='admin',
                      active=true,
                      updated_at=now()`,
-      [email, hash, "Administrador Nubarian"]
+      [email, hash, "Administrador"]
     );
 
     return res.status(200).json({ success: true, email, password });

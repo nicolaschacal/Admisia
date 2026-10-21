@@ -19,9 +19,7 @@ const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:3000/api/chat"
   : "/api/chat";
 
-const PENDING_ACTION_KEY = "nubarian_chat_pending_action";
-const LEGACY_SESSION_KEY = "nubarian_chat_session_id";
-const LEGACY_HISTORY_KEY = "nubarian_chat_session_history";
+const PENDING_ACTION_KEY = "admisia_chat_pending_action";
 let conversationHistory = [];
 let pendingAction = sessionStorage.getItem(PENDING_ACTION_KEY);
 let currentAppointment = null;
@@ -30,26 +28,32 @@ const usesSoftwareKeyboardViewport =
   window.matchMedia("(pointer: coarse)").matches &&
   Number(navigator.maxTouchPoints || 0) > 0;
 
+// Neutral defaults. The real data comes from /api/profile (the client's own
+// configuration in the dashboard).
 let publicProfile = {
-  name: "Colegio Nubarian",
+  name: "Admisiones",
   category: "Educación",
-  shortDescription: "Colegio Nubarian · Inicial y Primaria",
-  statusText: "Inscripciones abiertas",
-  addressLine1: "Av. Agraciada 2850",
-  addressLine2: "11800 Montevideo, Uruguay",
-  mapQuery: "Av. Agraciada 2850 Montevideo Uruguay",
-  phoneDisplay: "2208 0628",
-  phoneE164: "+59822080628",
-  email: "nubarian@nubarian.edu.uy",
-  website: "https://nubarian.edu.uy",
-  instagram: "https://www.instagram.com/colegionubarian/",
-  instagramLabel: "@colegionubarian",
-  facebook: "https://www.facebook.com/colegionubarian/",
-  facebookLabel: "Colegio Nubarian",
+  shortDescription: "",
+  statusText: "",
+  addressLine1: "",
+  addressLine2: "",
+  mapQuery: "",
+  phoneDisplay: "",
+  phoneE164: "",
+  email: "",
+  website: "",
+  instagram: "",
+  instagramLabel: "",
+  facebook: "",
+  facebookLabel: "",
   openHour: 8,
   closeHour: 18,
   weekdays: [1,2,3,4,5],
-  badgeEnabled: true
+  badgeEnabled: true,
+  logoUrl: "",
+  brandColor: "",
+  secondaryColor: "",
+  welcomeMessage: ""
 };
 
 const params = new URLSearchParams(window.location.search);
@@ -375,9 +379,9 @@ function showAppointmentCard(appointment = currentAppointment) {
   removeAppointmentCard();
 
   const { date, time } = splitAppointmentDisplay(appointment.display || appointment.shortDisplay || "Visita agendada");
-  const mapHref = document.getElementById("business-map-link")?.href
-    || "https://www.google.com/maps/search/?api=1&query=Av.%20Agraciada%202850%20Montevideo";
-  const street = document.getElementById("business-address-1")?.textContent?.trim() || "Av. Agraciada 2850";
+  const mapLink = document.getElementById("business-map-link")?.getAttribute("href");
+  const mapHref = mapLink && mapLink !== "#" ? mapLink : "";
+  const street = [publicProfile.addressLine1, publicProfile.addressLine2].filter(Boolean).join(", ");
 
   const wrap = document.createElement("div");
   wrap.className = "appointment-card";
@@ -386,15 +390,16 @@ function showAppointmentCard(appointment = currentAppointment) {
     <p class="appt-date">${escapeHtml(date)}</p>
     ${time ? `<p class="appt-time">${escapeHtml(time)} h</p>` : ""}
     <ul class="appt-details">
-      <li>${uiIcon("pin")}<span>${escapeHtml(street)}, Montevideo</span></li>
+      ${street ? `<li>${uiIcon("pin")}<span>${escapeHtml(street)}</span></li>` : ""}
       ${appointment.studentName ? `<li>${uiIcon("user")}<span>${escapeHtml(appointment.studentName)}</span></li>` : ""}
     </ul>
   `;
 
   const actions = document.createElement("div");
   actions.className = "bubble-actions bubble-actions--pair";
+  if (!mapHref) actions.classList.remove("bubble-actions--pair");
   actions.append(
-    bubbleButton("Cómo llegar", { icon: "pin", href: mapHref }),
+    ...(mapHref ? [bubbleButton("Cómo llegar", { icon: "pin", href: mapHref })] : []),
     bubbleButton("Cambiar horario", { icon: "swap", onClick: () => startReschedule({ echoUser: true }) }),
     bubbleButton("Cancelar visita", { icon: "x", tone: "danger", onClick: () => showCancelConfirmation({ echoUser: true }) })
   );
@@ -440,11 +445,8 @@ function applyPublicProfile() {
   setText("business-days-text", formatProfileWeekdays(publicProfile.weekdays));
   setText("business-website-display", getProfileWebsiteLabel(publicProfile.website));
 
-  if (publicProfile.logoUrl) {
-    document.querySelectorAll(".avatar, .profile-avatar-large img, .profile-cover-logo").forEach((img) => {
-      img.src = publicProfile.logoUrl;
-    });
-  }
+  applyBranding();
+  applyWelcomeMessage();
 
   document.querySelectorAll("[data-profile-badge]").forEach((badge) => {
     badge.hidden = publicProfile.badgeEnabled === false;
@@ -473,10 +475,76 @@ function applyPublicProfile() {
   });
 
   const footerWebsite = document.getElementById("footer-website-link");
-  if (footerWebsite) footerWebsite.textContent = getProfileWebsiteLabel(publicProfile.website);
+  if (footerWebsite) footerWebsite.textContent = publicProfile.website ? getProfileWebsiteLabel(publicProfile.website) : "";
 
+  hideMissingProfileData();
   document.title = `${publicProfile.name} | Admisiones`;
   updateBusinessOpenStatus();
+}
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+function initialsLogo(name, color) {
+  const letters = String(name || "").replace(/^(colegio|escuela|liceo|instituto)\s+/i, "")
+    .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "A";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="${color}"/><text x="48" y="50" font-family="-apple-system,Segoe UI,Roboto,Arial,sans-serif" font-size="38" font-weight="600" fill="#fff" text-anchor="middle" dominant-baseline="central">${letters}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function applyBranding() {
+  const root = document.documentElement;
+  const brand = HEX_COLOR.test(publicProfile.brandColor || "") ? publicProfile.brandColor : "";
+  const second = HEX_COLOR.test(publicProfile.secondaryColor || "") ? publicProfile.secondaryColor : "";
+  if (brand) root.style.setProperty("--brand", brand); else root.style.removeProperty("--brand");
+  if (second) root.style.setProperty("--brand-2", second); else root.style.removeProperty("--brand-2");
+
+  const logo = publicProfile.logoUrl || initialsLogo(publicProfile.name, brand || "#2747d6");
+  document.querySelectorAll("[data-brand-logo]").forEach((img) => { img.src = logo; });
+}
+
+function applyWelcomeMessage() {
+  const node = document.getElementById("welcome-text");
+  if (!node) return;
+  const custom = String(publicProfile.welcomeMessage || "").trim();
+  node.textContent = custom || [
+    `¡Hola! 👋 Soy el asistente de admisiones de ${publicProfile.name}.`,
+    "",
+    "Puedo ayudarte con la propuesta educativa, horarios, proceso de inscripción y costos.",
+    "",
+    "También puedo mostrarte horarios disponibles para coordinar una visita."
+  ].join("\n");
+}
+
+// A client may not have every channel. Hide rows and actions without data.
+function hideMissingProfileData() {
+  const p = publicProfile;
+  const toggle = (id, show) => {
+    const node = document.getElementById(id);
+    if (node) node.hidden = !show;
+  };
+  const hasAddress = Boolean(p.addressLine1 || p.addressLine2 || p.mapQuery);
+  toggle("business-map-link", hasAddress);
+  toggle("business-location-action", hasAddress);
+  toggle("business-phone-link", Boolean(p.phoneE164 || p.phoneDisplay));
+  toggle("business-call-action", Boolean(p.phoneE164));
+  toggle("business-email-link", Boolean(p.email));
+  toggle("business-website-link", Boolean(p.website));
+  toggle("business-website-action", Boolean(p.website));
+  toggle("header-website-link", Boolean(p.website));
+  toggle("business-instagram-link", Boolean(p.instagram));
+  toggle("business-facebook-link", Boolean(p.facebook));
+
+  // Category is already shown under the name in the hero.
+  const category = document.getElementById("business-category-text")?.closest(".profile-info-row");
+  if (category) category.hidden = true;
+
+  const description = document.getElementById("business-description-text")?.closest(".profile-info-row");
+  if (description) description.hidden = !(p.shortDescription || p.statusText);
+
+  document.querySelectorAll(".profile-info-card").forEach((card) => {
+    const rows = [...card.querySelectorAll(":scope > .profile-info-row, :scope > a")];
+    if (rows.length) card.hidden = rows.every((row) => row.hidden || row.style.display === "none");
+  });
 }
 
 async function loadPublicProfile() {
@@ -598,10 +666,7 @@ async function bootstrapConversation() {
   setLoading(true);
 
   try {
-    const legacySessionId = sessionStorage.getItem(LEGACY_SESSION_KEY);
-    const sessionUrl = legacySessionId
-      ? `/api/chat/session?legacySessionId=${encodeURIComponent(legacySessionId)}`
-      : "/api/chat/session";
+    const sessionUrl = "/api/chat/session";
 
     const response = await fetch(sessionUrl, {
       method: "GET",
@@ -618,11 +683,6 @@ async function bootstrapConversation() {
       finishConversationBootstrap({
         showWelcome: restoredMessages.length === 0
       });
-
-      if (legacySessionId) {
-        sessionStorage.removeItem(LEGACY_SESSION_KEY);
-        sessionStorage.removeItem(LEGACY_HISTORY_KEY);
-      }
 
       if (currentAppointment) showAppointmentCard(currentAppointment);
 

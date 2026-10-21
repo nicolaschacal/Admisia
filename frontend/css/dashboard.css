@@ -19,10 +19,14 @@
   --text-2: #5f6d78;
   --text-3: #9aa6af;
 
-  --accent: #1a22d8;
-  --accent-hover: #151cc0;
-  --accent-soft: #eceefe;
-  --accent-soft-hover: #e0e4fd;
+  /* Brand colors come from the client profile. */
+  --brand: #2747d6;
+  --solid: var(--brand);
+  --solid-hover: color-mix(in srgb, var(--brand) 88%, black);
+  --accent: var(--brand);
+  --accent-hover: color-mix(in srgb, var(--brand) 88%, black);
+  --accent-soft: color-mix(in srgb, var(--brand) 9%, white);
+  --accent-soft-hover: color-mix(in srgb, var(--brand) 14%, white);
   --on-accent: #ffffff;
 
   --success: #13a85c;
@@ -52,10 +56,12 @@
     --text-2: #8696a0;
     --text-3: #5d6c75;
 
-    --accent: #9aa8ff;
-    --accent-hover: #b0bbff;
-    --accent-soft: rgba(154,168,255,.14);
-    --accent-soft-hover: rgba(154,168,255,.22);
+    --solid: color-mix(in srgb, var(--brand) 82%, white);
+    --solid-hover: color-mix(in srgb, var(--brand) 74%, white);
+    --accent: color-mix(in srgb, var(--brand) 45%, white);
+    --accent-hover: color-mix(in srgb, var(--brand) 35%, white);
+    --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+    --accent-soft-hover: color-mix(in srgb, var(--accent) 22%, transparent);
     --on-accent: #0b141a;
 
     --success: #2fd17c;
@@ -106,12 +112,8 @@ h3 { font-size: 15px; font-weight: 600; line-height: 1.35; }
 }
 .btn svg { width: 17px; height: 17px; }
 .btn:disabled { opacity: .5; cursor: default; }
-.btn-primary { color: #fff; background: #1a22d8; }
-.btn-primary:hover:not(:disabled) { background: #151cc0; }
-@media (prefers-color-scheme: dark) {
-  .btn-primary { background: #3d48e6; }
-  .btn-primary:hover:not(:disabled) { background: #4954f0; }
-}
+.btn-primary { color: #fff; background: var(--solid); }
+.btn-primary:hover:not(:disabled) { background: var(--solid-hover); }
 .btn-secondary { color: var(--accent); background: var(--accent-soft); }
 .btn-secondary:hover:not(:disabled) { background: var(--accent-soft-hover); }
 .btn-ghost { color: var(--text); background: var(--field-bg); }
@@ -133,7 +135,7 @@ h3 { font-size: 15px; font-weight: 600; line-height: 1.35; }
 .field { display: grid; gap: 5px; min-width: 0; align-content: start; }
 .field > span, .field-label { font-size: 13px; font-weight: 500; color: var(--text-2); }
 .field small, .hint { font-size: 12.5px; color: var(--text-2); line-height: 1.4; }
-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea {
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="color"]), select, textarea {
   width: 100%; min-width: 0;
   min-height: 40px;
   padding: 8px 11px;
@@ -149,7 +151,7 @@ textarea { resize: vertical; line-height: 1.45; }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 input:disabled, select:disabled, textarea:disabled { background: var(--surface-2); color: var(--text-2); }
 input::placeholder, textarea::placeholder { color: var(--text-3); }
-input[type="checkbox"] { width: 17px; height: 17px; accent-color: #1a22d8; }
+input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--solid); }
 input[type="file"] { font-size: 14px; color: var(--text-2); }
 input[type="file"]::file-selector-button { margin-right: 10px; height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--field-bg); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
 .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
@@ -175,8 +177,8 @@ input[type="file"]::file-selector-button { margin-right: 10px; height: 34px; pad
   cursor: pointer;
   transition: background-color .12s ease, color .12s ease;
 }
-.chip-toggle input:checked + span { color: #fff; background: #1a22d8; }
-@media (prefers-color-scheme: dark) { .chip-toggle input:checked + span { background: #3d48e6; } }
+.chip-toggle input:checked + span { color: #fff; background: var(--solid); }
+
 .chip-toggle input:disabled + span { cursor: default; opacity: .7; }
 .chip-toggle input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -533,3 +535,12 @@ dl.facts dd { color: var(--text); overflow-wrap: anywhere; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 .check-item .list-row-main strong { white-space: normal; }
+
+.logo-field { display: flex; align-items: center; gap: 16px; }
+.logo-preview { width: 72px; height: 72px; flex: 0 0 72px; border-radius: 50%; object-fit: contain; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.logo-field-copy { display: grid; gap: 4px; }
+.color-input { display: flex; align-items: center; gap: 8px; }
+.color-input input[type="color"] { width: 44px; height: 40px; padding: 3px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--surface); cursor: pointer; }
+.color-input input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.color-input input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 6px; }
+label.btn { cursor: pointer; }

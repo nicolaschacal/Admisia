@@ -119,7 +119,12 @@ body { overflow: hidden !important; }
 
 .profile-actions {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0,1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: none !important;
+  max-width: 400px;
+  width: 100%;
+  margin-left: auto !important; margin-right: auto !important;
   gap: 8px !important;
   margin-top: clamp(10px, 1.8dvh, 18px) !important;
   padding: 0 !important;
@@ -145,24 +150,26 @@ body { overflow: hidden !important; }
 .profile-action-icon svg { width: 22px !important; height: 22px !important; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- Rows ---------- */
-.profile-info-card { flex: 1 1 auto !important; }
+.profile-info-card { flex: 0 0 auto !important; }
+/* Leftover height goes to the hero, so the sheet always fills the screen
+   whether the client filled in every field or only a few. */
+.profile-hero { flex: 1 1 auto !important; justify-content: center; }
 .profile-info-row,
 .profile-contact-row,
 .profile-social-row {
   position: relative;
-  flex: 1 1 auto;
-  max-height: 72px;
+  flex: 0 0 auto;
   min-height: var(--bp-row) !important;
   padding: 5px 16px !important;
   border: 0 !important;
   background: transparent !important;
 }
-.profile-info-row:not(:last-child)::after,
-.profile-contact-row:not(:last-child)::after {
+.profile-info-row:has(~ :not([hidden]))::after,
+.profile-contact-row:has(~ :not([hidden]))::after {
   content: ""; position: absolute; bottom: 0; right: 0; left: 16px;
   height: 1px; background: var(--line);
 }
-.profile-contact-row:not(:last-child)::after { left: 58px; }
+.profile-contact-row:has(~ :not([hidden]))::after { left: 58px; }
 
 .profile-info-row { display: grid; gap: 1px; align-content: center; }
 .profile-info-row > strong,
@@ -216,7 +223,7 @@ body { overflow: hidden !important; }
 .profile-contact-row:has(+ #business-website-link)::after { display: none; }
 
 /* Social links: one per row, like the contact rows */
-.profile-social-row:not(:last-child)::after {
+.profile-social-row:has(~ :not([hidden]))::after {
   content: ""; position: absolute; bottom: 0; right: 0; left: 58px;
   height: 1px; background: var(--line);
 }
@@ -292,3 +299,7 @@ body { overflow: hidden !important; }
   .business-profile,
   .chat-app > * { transition: none !important; }
 }
+
+/* Rows and actions without data are hidden from JS; win over the display
+   rules above. */
+.business-profile [hidden] { display: none !important; }

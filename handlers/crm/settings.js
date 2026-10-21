@@ -17,6 +17,20 @@ function cleanUrl(value) {
   }
 }
 
+function cleanLogo(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/^data:image\/(png|jpeg|webp|svg\+xml);base64,[a-z0-9+/=]+$/i.test(raw)) {
+    return raw.length <= 400 * 1024 ? raw : "";
+  }
+  return cleanUrl(raw);
+}
+
+function cleanColor(value) {
+  const raw = String(value ?? "").trim();
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw.toLowerCase() : "";
+}
+
 function cleanWeekdays(value, fallback = [1,2,3,4,5]) {
   if (!Array.isArray(value) || !value.length) return fallback;
   const unique = [...new Set(value.map(Number).filter((day) => day >= 1 && day <= 7))];
@@ -93,10 +107,12 @@ module.exports = async (req, res) => {
       const website = cleanUrl(profile.website);
       const instagram = cleanUrl(profile.instagram);
       const facebook = cleanUrl(profile.facebook);
-      const logoUrl = cleanUrl(profile.logoUrl);
+      const logoUrl = cleanLogo(profile.logoUrl);
       if (profile.logoUrl && !logoUrl) {
-        return res.status(400).json({ success: false, message: "La dirección del logo no es válida." });
+        return res.status(400).json({ success: false, message: "El logo debe ser una imagen PNG, JPG, WEBP o SVG de hasta 300 KB, o una dirección https." });
       }
+      const brandColor = cleanColor(profile.brandColor);
+      const secondaryColor = cleanColor(profile.secondaryColor);
 
       if (profile.website && !website) {
         return res.status(400).json({ success: false, message: "La URL del sitio web no es válida." });
@@ -128,7 +144,11 @@ module.exports = async (req, res) => {
         closeHour: profileCloseHour,
         weekdays: cleanWeekdays(profile.weekdays),
         badgeEnabled: profile.badgeEnabled !== false,
-        logoUrl
+        logoUrl,
+        brandColor,
+        secondaryColor,
+        welcomeMessage: String(profile.welcomeMessage ?? "").trim().slice(0, 700),
+        assistantNotes: String(profile.assistantNotes ?? "").trim().slice(0, 2000)
       };
 
       if (profileValue.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileValue.email)) {
@@ -155,33 +175,35 @@ module.exports = async (req, res) => {
           [JSON.stringify(profileValue)]
         );
 
-        const institutionalContent = [
+        // Keep a knowledge item with the contact details in sync with the
+        // profile, so the assistant always answers with the current data.
+        const contactContent = [
           `Institución: ${profileValue.name}.`,
-          "Niveles: Inicial y Primaria.",
-          "Inicial comprende propuestas para niños de 1 a 5 años.",
-          "Primaria comprende de 1.º a 6.º año.",
+          profileValue.shortDescription ? `Descripción: ${profileValue.shortDescription}.` : "",
           profileValue.addressLine1 || profileValue.addressLine2
             ? `Dirección: ${[profileValue.addressLine1, profileValue.addressLine2].filter(Boolean).join(", ")}.`
             : "",
           profileValue.phoneDisplay ? `Teléfono: ${profileValue.phoneDisplay}.` : "",
-          profileValue.instagramLabel ? `Instagram: ${profileValue.instagramLabel}.` : "",
           profileValue.email ? `Correo: ${profileValue.email}.` : "",
-          profileValue.website ? `Sitio web: ${profileValue.website}.` : ""
+          profileValue.website ? `Sitio web: ${profileValue.website}.` : "",
+          profileValue.instagramLabel ? `Instagram: ${profileValue.instagramLabel}.` : "",
+          profileValue.facebookLabel ? `Facebook: ${profileValue.facebookLabel}.` : "",
+          `Horario de atención: ${String(profileValue.openHour).padStart(2, "0")}:00 a ${String(profileValue.closeHour).padStart(2, "0")}:00.`
         ].filter(Boolean).join("\n");
 
-        await client.query(
+        const updated = await client.query(
           `UPDATE knowledge_items
-           SET content=$1,
-               summary=$2,
-               updated_by=$3,
-               updated_at=now()
-           WHERE title='Información general del Colegio Nubarian'`,
-          [
-            institutionalContent,
-            `${profileValue.name} ofrece Inicial y Primaria en Montevideo.`,
-            manager.sub
-          ]
+           SET content=$1, summary=$2, status='active', updated_by=$3, updated_at=now()
+           WHERE source_type='import' AND source_name='perfil'`,
+          [contactContent, `Datos de contacto de ${profileValue.name}.`, manager.sub]
         );
+        if (!updated.rowCount) {
+          await client.query(
+            `INSERT INTO knowledge_items (title,summary,content,tags,source_type,source_name,status,priority,updated_by)
+             VALUES ('Datos de contacto y ubicación',$1,$2,$3,'import','perfil','active',100,$4)`,
+            [`Datos de contacto de ${profileValue.name}.`, contactContent, ["contacto", "ubicación", "dirección", "teléfono", "horario"], manager.sub]
+          );
+        }
       });
 
       return res.status(200).json({ success: true, profile: profileValue });

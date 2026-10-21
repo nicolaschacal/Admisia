@@ -3,7 +3,6 @@
 
 :root {
   color-scheme: light;
-  --brand-gradient: linear-gradient(112deg, var(--brand-blue) 0%, #4935b8 43%, #cc5d4d 75%, var(--brand-orange) 100%);
   --header-bg: #ffffff;
   --header-text: #111b21;
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -21,30 +20,31 @@
   --text: #111b21;
   --text-2: #667781;
   --text-3: #aebac1;
-  --accent: #1a22d8;
-  --accent-solid: #1a22d8;
-  --accent-solid-hover: #151cc0;
-  --accent-solid-active: #1117a6;
-  --orange: #f26200;
+  /* Brand colors come from the client profile (Configuración → Negocio). */
+  --accent: var(--brand);
+  --accent-solid: var(--brand);
+  --accent-solid-hover: color-mix(in srgb, var(--brand) 88%, black);
+  --accent-solid-active: color-mix(in srgb, var(--brand) 78%, black);
+  --orange: var(--brand-2);
   --online: #13a85c;
 
   --bubble-in: #ffffff;
-  --bubble-out: #dfe6ff;
+  --bubble-out: color-mix(in srgb, var(--brand) 13%, white);
   --bubble-out-text: #111b21;
   --bubble-shadow: 0 1px .5px rgba(11,20,26,.13);
   --meta: #667781;
-  --meta-out: #5f6f8a;
+  --meta-out: color-mix(in srgb, var(--brand) 30%, #667781);
   --check: #53bdeb;
 
   --composer-bg: #f0f2f5;
   --input-bg: #ffffff;
   --chip-bg: #ffffff;
-  --chip-border: rgba(26,34,216,.22);
-  --chip-border-hover: rgba(21,27,232,.30);
-  --orange-soft: #fff7f1;
-  --orange-border: rgba(255,106,0,.24);
-  --accent-soft: #eceefe;
-  --accent-soft-hover: #e0e4fd;
+  --chip-border: color-mix(in srgb, var(--brand) 22%, transparent);
+  --chip-border-hover: color-mix(in srgb, var(--brand) 32%, transparent);
+  --orange-soft: color-mix(in srgb, var(--brand-2) 6%, white);
+  --orange-border: color-mix(in srgb, var(--brand-2) 26%, transparent);
+  --accent-soft: color-mix(in srgb, var(--brand) 9%, white);
+  --accent-soft-hover: color-mix(in srgb, var(--brand) 14%, white);
   --danger: #c2412d;
   --danger-soft: #fdeeeb;
   --danger-soft-hover: #fbe1dc;
@@ -75,15 +75,15 @@
     --text: #e9edef;
     --text-2: #8696a0;
     --text-3: #54656f;
-    --accent: #9aa8ff;
-    --accent-solid: #3d48e6;
-    --accent-solid-hover: #4954f0;
-    --accent-solid-active: #333dd0;
-    --orange: #ff8a3d;
+    --accent: color-mix(in srgb, var(--brand) 45%, white);
+    --accent-solid: color-mix(in srgb, var(--brand) 82%, white);
+    --accent-solid-hover: color-mix(in srgb, var(--brand) 74%, white);
+    --accent-solid-active: color-mix(in srgb, var(--brand) 90%, white);
+    --orange: color-mix(in srgb, var(--brand-2) 70%, white);
     --online: #2fd17c;
 
     --bubble-in: #202c33;
-    --bubble-out: #2b3196;
+    --bubble-out: color-mix(in srgb, var(--brand) 55%, #0b141a);
     --bubble-out-text: #eef0ff;
     --bubble-shadow: 0 1px .5px rgba(0,0,0,.35);
     --meta: rgba(233,237,239,.6);
@@ -93,12 +93,12 @@
     --composer-bg: #202c33;
     --input-bg: #2a3942;
     --chip-bg: #1f2c33;
-    --chip-border: rgba(154,168,255,.28);
-    --chip-border-hover: rgba(143,162,255,.36);
-    --orange-soft: rgba(255,138,61,.10);
-    --orange-border: rgba(255,138,61,.30);
-    --accent-soft: rgba(154,168,255,.16);
-    --accent-soft-hover: rgba(154,168,255,.24);
+    --chip-border: color-mix(in srgb, var(--accent) 28%, transparent);
+    --chip-border-hover: color-mix(in srgb, var(--accent) 38%, transparent);
+    --orange-soft: color-mix(in srgb, var(--orange) 10%, transparent);
+    --orange-border: color-mix(in srgb, var(--orange) 30%, transparent);
+    --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+    --accent-soft-hover: color-mix(in srgb, var(--accent) 24%, transparent);
     --danger: #ff8f7e;
     --danger-soft: rgba(255,110,90,.14);
     --danger-soft-hover: rgba(255,110,90,.22);

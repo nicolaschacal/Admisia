@@ -21,7 +21,7 @@
     const location = document.createElement('a');
     location.id = 'business-location-action';
     location.className = 'profile-action';
-    location.href = mapLink?.href || 'https://www.google.com/maps/search/?api=1&query=Av.%20Agraciada%202850%20Montevideo';
+    location.href = mapLink?.href || '#';
     location.target = '_blank';
     location.rel = 'noreferrer';
     location.title = 'Ver ubicación';
@@ -54,8 +54,11 @@
   function polishHero() {
     if (!heroSubtitle) return;
     const description = document.getElementById('business-description-text')?.textContent?.trim() || '';
-    const cleaned = description.replace(/^Colegio Nubarian\s*[·•|-]\s*/i, '').trim();
-    heroSubtitle.textContent = cleaned || 'Inicial y Primaria';
+    const name = document.getElementById('business-profile-name')?.textContent?.trim() || '';
+    const prefix = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[·•|-]\\s*`, 'i');
+    const cleaned = name ? description.replace(prefix, '').trim() : description;
+    const category = document.getElementById('business-category-text')?.textContent?.trim() || '';
+    heroSubtitle.textContent = cleaned || category;
   }
 
   function mergeActionsIntoHero() {
