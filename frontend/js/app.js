@@ -8,6 +8,7 @@ const quickQuestions = document.querySelectorAll(".quick-question");
 const typingIndicator = document.getElementById("typing-indicator");
 const contactStatus = document.getElementById("contact-status");
 const conversationRoot = messagesContainer.querySelector(".conversation");
+const chatApp = document.querySelector(".chat-app");
 
 const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:3000/api/chat"
@@ -322,6 +323,18 @@ function showAppointmentCard(appointment = currentAppointment) {
   addCustomAssistantCard(wrap, "appointment-card-row");
 }
 
+function finishConversationBootstrap({ showWelcome = false } = {}) {
+  const loading = document.getElementById("conversation-loading");
+  if (loading) loading.remove();
+
+  const welcome = document.querySelector(".welcome-card");
+  if (welcome) welcome.hidden = !showWelcome;
+
+  chatApp?.classList.remove("app-booting");
+  contactStatus.textContent = "En línea · Admisiones";
+  contactStatus.classList.remove("is-typing");
+}
+
 async function bootstrapConversation() {
   setLoading(true);
 
@@ -339,8 +352,13 @@ async function bootstrapConversation() {
     const data = await response.json();
 
     if (response.ok && data.success) {
-      restoreConversation(data.messages || []);
+      const restoredMessages = data.messages || [];
+      restoreConversation(restoredMessages);
       currentAppointment = data.appointment || null;
+
+      finishConversationBootstrap({
+        showWelcome: restoredMessages.length === 0
+      });
 
       if (legacySessionId) {
         sessionStorage.removeItem(LEGACY_SESSION_KEY);
@@ -355,11 +373,18 @@ async function bootstrapConversation() {
       if (pendingAction === "booking" && !currentAppointment) {
         addBookingAction();
       }
+    } else {
+      finishConversationBootstrap({ showWelcome: true });
     }
   } catch (error) {
     console.error("No se pudo restaurar la conversación:", error);
+    finishConversationBootstrap({ showWelcome: true });
   } finally {
     setLoading(false);
+    chatApp?.classList.remove("app-booting");
+    if (contactStatus.textContent === "Conectando…") {
+      contactStatus.textContent = "En línea · Admisiones";
+    }
     scrollToBottom("auto");
   }
 }

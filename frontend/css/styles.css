@@ -969,3 +969,76 @@ body.keyboard-open .messages {
     will-change: transform;
   }
 }
+
+
+/* Initial session restore */
+.app-booting .header-actions,
+.app-booting .composer {
+  pointer-events: none;
+}
+
+.app-booting .header-actions {
+  opacity: .72;
+}
+
+.app-booting .composer {
+  opacity: .72;
+}
+
+.conversation-loading {
+  min-height: min(260px, 34vh);
+  display: grid;
+  place-items: center;
+  padding: 24px 12px;
+}
+
+.conversation-loading-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid rgba(32,49,79,.08);
+  border-radius: 14px;
+  color: #6e7887;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 4px 16px rgba(25,39,73,.05);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.conversation-loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.conversation-loading-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8f98a5;
+  animation: conversationLoadingDot 1.1s infinite ease-in-out;
+}
+
+.conversation-loading-dots span:nth-child(2) {
+  animation-delay: .14s;
+}
+
+.conversation-loading-dots span:nth-child(3) {
+  animation-delay: .28s;
+}
+
+@keyframes conversationLoadingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: .35; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+@media (max-width: 680px) {
+  .conversation-loading {
+    min-height: 180px;
+  }
+
+  .conversation-loading-card {
+    font-size: 11.5px;
+  }
+}

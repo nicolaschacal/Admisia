@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <main class="chat-app" aria-label="Chat de admisiones del Colegio Nubarian">
+  <main class="chat-app app-booting" aria-label="Chat de admisiones del Colegio Nubarian">
     <header class="chat-header">
       <div class="contact">
         <div class="avatar-wrap" aria-hidden="true">
@@ -19,7 +19,7 @@
 
         <div class="contact-copy">
           <h1>Colegio Nubarian</h1>
-          <p id="contact-status" class="contact-status">En línea · Admisiones</p>
+          <p id="contact-status" class="contact-status">Conectando…</p>
         </div>
       </div>
 
@@ -41,9 +41,17 @@
 
     <section id="messages" class="messages" aria-live="polite" aria-label="Conversación">
       <div class="conversation">
-        <div class="day-divider"><span>Hoy</span></div>
+        <div id="conversation-loading" class="conversation-loading" role="status" aria-live="polite">
+          <div class="conversation-loading-card">
+            <div class="conversation-loading-dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <span>Cargando tu conversación…</span>
+          </div>
+        </div>
 
-        <div class="welcome-card">
+        <div class="welcome-card" hidden>
+          <div class="day-divider"><span>Hoy</span></div>
           <div class="message-row assistant">
             <div class="message-stack">
               <div class="message assistant-message intro-message">¡Hola! 👋 Soy el asistente de Admisiones del Colegio Nubarian.
