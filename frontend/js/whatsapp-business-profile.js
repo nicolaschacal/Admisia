@@ -55,7 +55,7 @@
     if (!heroSubtitle) return;
     const description = document.getElementById('business-description-text')?.textContent?.trim() || '';
     const cleaned = description.replace(/^Colegio Nubarian\s*[·•|-]\s*/i, '').trim();
-    heroSubtitle.textContent = `${cleaned || 'Inicial y Primaria'} · Perfil institucional`;
+    heroSubtitle.textContent = cleaned || 'Inicial y Primaria';
   }
 
   function mergeActionsIntoHero() {

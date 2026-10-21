@@ -141,7 +141,7 @@ body { overflow: hidden !important; }
 .profile-action:hover, .profile-action:focus-visible { filter: brightness(.97); }
 .profile-action:active { filter: brightness(.93); }
 .profile-action-icon { width: 24px !important; height: 24px !important; display: grid; place-items: center; color: var(--accent); }
-.profile-action--booking .profile-action-icon { color: var(--orange); }
+
 .profile-action-icon svg { width: 22px !important; height: 22px !important; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- Rows ---------- */
@@ -239,11 +239,11 @@ body { overflow: hidden !important; }
 }
 .profile-cta button {
   width: 100%; min-height: clamp(42px, 6dvh, 50px); border: 0; border-radius: 14px;
-  background: var(--brand-gradient); color: #fff;
+  background: var(--accent-solid); color: #fff;
   box-shadow: none;
-  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+  font: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
 }
-.profile-cta button:hover { filter: brightness(1.06); }
+.profile-cta button:hover { background: var(--accent-solid-hover); }
 .profile-cta button:active { transform: translateY(1px); }
 
 /* Very short screens: drop the least important bits */

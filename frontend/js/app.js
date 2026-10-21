@@ -106,7 +106,7 @@ function scrollToBottom(behavior = "smooth") {
 
 function setTyping(isTyping, label = "escribiendo…") {
   typingIndicator.hidden = !isTyping;
-  contactStatus.textContent = isTyping ? label : "En línea · Admisiones";
+  contactStatus.textContent = isTyping ? label : "en línea";
   contactStatus.classList.toggle("is-typing", isTyping);
   if (isTyping) scrollToBottom("smooth");
 }
@@ -194,7 +194,13 @@ function addCustomAssistantCard(node, extraClass = "") {
   const meta = document.createElement("span");
   meta.className = "message-meta message-meta--block";
   meta.innerHTML = `<span class="message-time">${messageTime()}</span>`;
-  card.appendChild(meta);
+  const bubbleActions = node.querySelector?.(":scope > .bubble-actions");
+  if (bubbleActions) {
+    card.classList.add("has-actions");
+    bubbleActions.before(meta);
+  } else {
+    card.appendChild(meta);
+  }
 
   stack.appendChild(card);
   row.appendChild(stack);
@@ -344,7 +350,30 @@ function escapeHtml(value = "") {
 
 function splitAppointmentDisplay(display = "") {
   const [datePart, timePart] = String(display).split(/\s+a\s+las\s+/i);
-  return { date: capitalize((datePart || display).trim()), time: (timePart || "").trim() };
+  let date = (datePart || display).trim();
+  const match = date.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) {
+    const parsed = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]), 12);
+    if (!Number.isNaN(parsed.getTime())) {
+      date = new Intl.DateTimeFormat("es-UY", { weekday: "long", day: "numeric", month: "long" }).format(parsed).replace(",", "");
+    }
+  }
+  return { date: capitalize(date), time: (timePart || "").trim() };
+}
+
+function bubbleButton(label, { icon, tone = "", onClick, href } = {}) {
+  const el = document.createElement(href ? "a" : "button");
+  if (href) {
+    el.href = href;
+    el.target = "_blank";
+    el.rel = "noreferrer";
+  } else {
+    el.type = "button";
+  }
+  el.className = `bubble-action${tone ? ` bubble-action--${tone}` : ""}`;
+  el.innerHTML = `${icon ? uiIcon(icon) : ""}<span>${escapeHtml(label)}</span>`;
+  if (onClick) el.addEventListener("click", onClick);
+  return el;
 }
 
 function showAppointmentCard(appointment = currentAppointment) {
@@ -354,41 +383,28 @@ function showAppointmentCard(appointment = currentAppointment) {
   const { date, time } = splitAppointmentDisplay(appointment.display || appointment.shortDisplay || "Visita agendada");
   const mapHref = document.getElementById("business-map-link")?.href
     || "https://www.google.com/maps/search/?api=1&query=Av.%20Agraciada%202850%20Montevideo";
-  const address = [document.getElementById("business-address-1")?.textContent, "Montevideo"].filter(Boolean).join(", ") || "Agraciada 2850, Montevideo";
+  const street = document.getElementById("business-address-1")?.textContent?.trim() || "Av. Agraciada 2850";
 
   const wrap = document.createElement("div");
   wrap.className = "appointment-card";
   wrap.innerHTML = `
-    <div class="appt-head">
-      <span class="appt-head-icon">${uiIcon("calendarCheck")}</span>
-      <span class="appt-head-copy"><small>Tu próxima visita</small><span class="appt-status">Confirmada</span></span>
-    </div>
-    <div class="appt-when">
-      <strong>${escapeHtml(date)}</strong>
-      ${time ? `<span class="appt-time">${uiIcon("clock")}${escapeHtml(time)} hs</span>` : ""}
-    </div>
-    <div class="appt-details">
-      <a class="appt-detail" href="${escapeHtml(mapHref)}" target="_blank" rel="noreferrer">${uiIcon("pin")}<span>${escapeHtml(address)}</span>${uiIcon("chevron", "ui-icon appt-chevron")}</a>
-      ${appointment.studentName ? `<span class="appt-detail">${uiIcon("user")}<span>${escapeHtml(appointment.studentName)}</span></span>` : ""}
-    </div>
-    <div class="appointment-actions"></div>
+    <p class="appt-status">${uiIcon("check")}Visita confirmada</p>
+    <p class="appt-date">${escapeHtml(date)}</p>
+    ${time ? `<p class="appt-time">${escapeHtml(time)} h</p>` : ""}
+    <ul class="appt-details">
+      <li>${uiIcon("pin")}<span>${escapeHtml(street)}, Montevideo</span></li>
+      ${appointment.studentName ? `<li>${uiIcon("user")}<span>${escapeHtml(appointment.studentName)}</span></li>` : ""}
+    </ul>
   `;
 
-  const actions = wrap.querySelector(".appointment-actions");
-
-  const change = document.createElement("button");
-  change.type = "button";
-  change.className = "chat-btn chat-btn--secondary";
-  change.innerHTML = `${uiIcon("swap")}<span>Cambiar horario</span>`;
-  change.addEventListener("click", () => startReschedule({ echoUser: true }));
-
-  const cancel = document.createElement("button");
-  cancel.type = "button";
-  cancel.className = "chat-btn chat-btn--danger";
-  cancel.innerHTML = `${uiIcon("x")}<span>Cancelar</span>`;
-  cancel.addEventListener("click", () => showCancelConfirmation({ echoUser: true }));
-
-  actions.append(change, cancel);
+  const actions = document.createElement("div");
+  actions.className = "bubble-actions";
+  actions.append(
+    bubbleButton("Cómo llegar", { icon: "pin", href: mapHref }),
+    bubbleButton("Cambiar horario", { icon: "swap", onClick: () => startReschedule({ echoUser: true }) }),
+    bubbleButton("Cancelar visita", { icon: "x", tone: "danger", onClick: () => showCancelConfirmation({ echoUser: true }) })
+  );
+  wrap.appendChild(actions);
   addCustomAssistantCard(wrap, "appointment-card-row");
 }
 
@@ -574,7 +590,7 @@ function finishConversationBootstrap({ showWelcome = false } = {}) {
   if (welcome) welcome.hidden = !showWelcome;
 
   chatApp?.classList.remove("app-booting");
-  contactStatus.textContent = "En línea · Admisiones";
+  contactStatus.textContent = "en línea";
   contactStatus.classList.remove("is-typing");
 }
 
@@ -626,7 +642,7 @@ async function bootstrapConversation() {
     setLoading(false);
     chatApp?.classList.remove("app-booting");
     if (contactStatus.textContent === "Conectando…") {
-      contactStatus.textContent = "En línea · Admisiones";
+      contactStatus.textContent = "en línea";
     }
     scrollToBottom("auto");
   }
@@ -646,7 +662,7 @@ function describeDay(day) {
     return { dow: (parts[0] || "").slice(0, 3), num: parts[1] || "", mon: (parts[3] || "").slice(0, 3), full: capitalize(day.label || "") };
   }
   const fmt = (options) => new Intl.DateTimeFormat("es-UY", options).format(date).replace(".", "");
-  return { dow: fmt({ weekday: "short" }), num: String(date.getDate()), mon: fmt({ month: "short" }), full: capitalize(day.label || fmt({ weekday: "long", day: "numeric", month: "long" })) };
+  return { dow: fmt({ weekday: "short" }), num: String(date.getDate()), mon: fmt({ month: "short" }), full: capitalize(day.label || fmt({ weekday: "long", day: "numeric", month: "long" }).replace(",", "")) };
 }
 
 function renderSlots(availability, onSelect) {
@@ -654,12 +670,8 @@ function renderSlots(availability, onSelect) {
   const picker = document.createElement("div");
   picker.className = "slot-picker";
   picker.innerHTML = `
-    <div class="slot-picker-head">
-      <span class="slot-picker-icon">${uiIcon("calendar")}</span>
-      <span><strong>Elegí día y horario</strong><small>Tocá un día y después la hora que prefieras</small></span>
-    </div>
     <div class="slot-chips" role="tablist" aria-label="Días disponibles"></div>
-    <div class="slot-day-label"></div>
+    <p class="slot-day-label"></p>
     <div class="slot-times" role="group"></div>
   `;
 
@@ -674,7 +686,7 @@ function renderSlots(availability, onSelect) {
       chip.classList.toggle("is-active", i === index);
       chip.setAttribute("aria-selected", String(i === index));
     });
-    dayLabel.innerHTML = `${escapeHtml(info.full)} <span>${day.slots.length} ${day.slots.length === 1 ? "horario" : "horarios"}</span>`;
+    dayLabel.textContent = info.full;
     times.setAttribute("aria-label", `Horarios del ${info.full}`);
     times.innerHTML = "";
 
@@ -700,7 +712,8 @@ function renderSlots(availability, onSelect) {
     chip.type = "button";
     chip.className = "slot-chip";
     chip.setAttribute("role", "tab");
-    chip.innerHTML = `<span class="slot-chip-dow">${escapeHtml(info.dow)}</span><span class="slot-chip-num">${escapeHtml(info.num)}</span><span class="slot-chip-mon">${escapeHtml(info.mon)}</span>`;
+    chip.setAttribute("aria-label", info.full);
+    chip.innerHTML = `<span class="slot-chip-dow">${escapeHtml(info.dow)}</span><span class="slot-chip-num">${escapeHtml(info.num)}</span>`;
     chip.addEventListener("click", () => {
       if (picker.classList.contains("is-done")) return;
       selectDay(index);
@@ -740,7 +753,7 @@ async function startBooking({ userMessage = "Quiero agendar una visita.", echoUs
 
     addMessage("Tengo estos horarios disponibles. Elegí el que te quede mejor:", "assistant");
     addCustomAssistantCard(renderSlots(availability, (slot, day) => {
-      showBookingForm(slot.start, `${day.label} · ${slot.label}`);
+      showBookingForm(slot.start, `${day.label} a las ${slot.label}`);
     }));
   } catch (error) {
     setTyping(false);
@@ -752,65 +765,73 @@ async function startBooking({ userMessage = "Quiero agendar una visita.", echoUs
 }
 
 function showBookingForm(startAt, label) {
-  addMessage(`Me queda bien ${label}.`, "user");
+  addMessage(`Me queda bien el ${label}.`, "user");
 
   const container = document.createElement("div");
   container.className = "booking-form-card";
 
-  const summary = document.createElement("div");
-  summary.className = "booking-summary";
-  summary.innerHTML = `
-    <span class="booking-summary-icon">${uiIcon("calendar")}</span>
-    <span><small>Reservando tu visita</small><strong>${escapeHtml(capitalize(label))}</strong></span>
+  const head = document.createElement("div");
+  head.className = "booking-head";
+  head.innerHTML = `
+    <span class="booking-head-copy">
+      <strong>${escapeHtml(capitalize(label))}</strong>
+      <small>Completá tus datos para confirmar la visita.</small>
+    </span>
   `;
-  container.appendChild(summary);
+  const changeSlot = document.createElement("button");
+  changeSlot.type = "button";
+  changeSlot.className = "link-button";
+  changeSlot.textContent = "Cambiar";
+  changeSlot.addEventListener("click", () => {
+    container.closest(".message-row")?.remove();
+    startBooking({ echoUser: false });
+  });
+  head.appendChild(changeSlot);
+  container.appendChild(head);
 
   const form = document.createElement("form");
   form.className = "booking-form";
-  form.noValidate = false;
   form.innerHTML = `
-    <p class="booking-step">Completá tus datos para confirmar</p>
-    <label class="field">
-      <span>Nombre y apellido</span>
-      <input name="adultName" autocomplete="name" required maxlength="200" placeholder="Ej. María Pérez">
-    </label>
-    <div class="field-row field-row--stack">
+    <div class="field-group">
       <label class="field">
-        <span>Correo</span>
-        <input name="email" type="email" inputmode="email" autocomplete="email" required maxlength="200" placeholder="tu@correo.com">
+        <span>Nombre y apellido</span>
+        <input placeholder="Nombre y apellido" name="adultName" autocomplete="name" required maxlength="200">
+      </label>
+      <label class="field">
+        <span>Correo electrónico</span>
+        <input placeholder="Correo electrónico" name="email" type="email" inputmode="email" autocomplete="email" required maxlength="200">
       </label>
       <label class="field">
         <span>Teléfono</span>
-        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="80" placeholder="09X XXX XXX">
+        <input placeholder="Teléfono" name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="80">
       </label>
     </div>
-    <div class="field-row">
+    <div class="field-group">
       <label class="field">
         <span>Nombre del estudiante</span>
-        <input name="studentName" required maxlength="200" placeholder="Nombre">
+        <input placeholder="Nombre del estudiante" name="studentName" required maxlength="200">
       </label>
       <label class="field">
         <span>Fecha de nacimiento</span>
         <input name="birthDate" type="date" required>
       </label>
     </div>
-    <details class="booking-more">
-      <summary>Agregar más información <span>(opcional)</span></summary>
+    <details class="field-group booking-more">
+      <summary><span>Más información</span><small>Opcional</small>${uiIcon("chevron", "ui-icon booking-more-chevron")}</summary>
       <label class="field">
         <span>Institución de la que proviene</span>
-        <input name="previousInstitution" maxlength="250" placeholder="Si aplica">
+        <input placeholder="Institución de la que proviene" name="previousInstitution" maxlength="250">
       </label>
       <label class="field">
         <span>Comentarios</span>
-        <textarea name="comments" rows="2" maxlength="1500" placeholder="Algo que quieras contarnos"></textarea>
+        <textarea placeholder="Comentarios" name="comments" rows="2" maxlength="1500"></textarea>
       </label>
     </details>
     <label class="consent-row">
       <input name="privacyConsent" type="checkbox" value="true" required>
-      <span>Autorizo el uso de estos datos solo para gestionar la admisión y el contacto del colegio.</span>
+      <span>Acepto que el colegio use estos datos solo para el proceso de admisión.</span>
     </label>
-    <button type="submit" class="chat-btn chat-btn--primary booking-submit">${uiIcon("check")}<span>Confirmar visita</span></button>
-    <small class="booking-note">Sin costo · Podés cambiarla o cancelarla desde este chat</small>
+    <button type="submit" class="chat-btn chat-btn--primary booking-submit"><span>Confirmar visita</span></button>
   `;
 
   form.addEventListener("submit", async (event) => {
@@ -842,8 +863,8 @@ function showBookingForm(startAt, label) {
       currentAppointment = data.appointment;
       container.innerHTML = `
         <div class="booking-success">
-          <span class="booking-success-icon">${uiIcon("check")}</span>
-          <span><strong>Visita confirmada</strong><small>${escapeHtml(capitalize(data.appointment.display || ""))}</small></span>
+          <p class="appt-status">${uiIcon("check")}Reserva enviada</p>
+          <p>${escapeHtml(capitalize(label))}</p>
         </div>
       `;
 
@@ -886,7 +907,7 @@ async function startReschedule({ echoUser = false } = {}) {
     );
 
     addCustomAssistantCard(renderSlots(availability, async (slot, day) => {
-      await rescheduleAppointment(slot.start, `${day.label} · ${slot.label}`);
+      await rescheduleAppointment(slot.start, `${day.label} a las ${slot.label}`);
     }));
   } catch (error) {
     setTyping(false);
@@ -911,7 +932,7 @@ async function rescheduleAppointment(startAt, label) {
 
     if (!response.ok || !data.success) throw new Error(data.message || "No se pudo cambiar la visita.");
 
-    addMessage(`Me queda bien ${label}.`, "user");
+    addMessage(`Me queda bien el ${label}.`, "user");
     currentAppointment = data.appointment;
     addMessage(`Listo. Tu visita ahora es ${currentAppointment.display}.`, "assistant");
     showAppointmentCard(currentAppointment);
@@ -928,26 +949,17 @@ function showCancelConfirmation({ echoUser = false } = {}) {
   const wrapper = document.createElement("div");
   wrapper.className = "cancel-confirmation";
 
+  const { date, time } = splitAppointmentDisplay(currentAppointment.display);
   const text = document.createElement("p");
-  text.textContent = `¿Querés cancelar la visita del ${currentAppointment.display}?`;
+  text.textContent = `¿Cancelar la visita del ${date.toLowerCase()}${time ? ` a las ${time}` : ""}?`;
 
   const actions = document.createElement("div");
-  actions.className = "appointment-actions";
+  actions.className = "bubble-actions";
+  actions.append(
+    bubbleButton("Sí, cancelar visita", { tone: "danger", onClick: cancelAppointment }),
+    bubbleButton("Mantener visita", { onClick: () => wrapper.closest(".message-row")?.remove() })
+  );
 
-  const confirm = document.createElement("button");
-  confirm.type = "button";
-  confirm.className = "chat-btn chat-btn--danger-solid";
-  confirm.textContent = "Sí, cancelar";
-
-  const keep = document.createElement("button");
-  keep.type = "button";
-  keep.className = "chat-btn chat-btn--secondary";
-  keep.textContent = "Mantener visita";
-
-  confirm.addEventListener("click", cancelAppointment);
-  keep.addEventListener("click", () => wrapper.closest(".message-row")?.remove());
-
-  actions.append(confirm, keep);
   wrapper.append(text, actions);
   addCustomAssistantCard(wrapper);
 }

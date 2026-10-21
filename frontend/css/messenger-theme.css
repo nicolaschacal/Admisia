@@ -4,7 +4,9 @@
 :root {
   color-scheme: light;
   --brand-gradient: linear-gradient(112deg, var(--brand-blue) 0%, #4935b8 43%, #cc5d4d 75%, var(--brand-orange) 100%);
-  --header-bg: var(--brand-gradient);
+  --header-bg: #ffffff;
+  --header-text: #111b21;
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --app-bg: #e5e7eb;
   --chat-bg: #efeae2;
@@ -19,7 +21,10 @@
   --text: #111b21;
   --text-2: #667781;
   --text-3: #aebac1;
-  --accent: #1f5bff;
+  --accent: #1a22d8;
+  --accent-solid: #1a22d8;
+  --accent-solid-hover: #151cc0;
+  --accent-solid-active: #1117a6;
   --orange: #f26200;
   --online: #13a85c;
 
@@ -34,14 +39,15 @@
   --composer-bg: #f0f2f5;
   --input-bg: #ffffff;
   --chip-bg: #ffffff;
-  --chip-border: rgba(21,27,232,.12);
+  --chip-border: rgba(26,34,216,.22);
   --chip-border-hover: rgba(21,27,232,.30);
   --orange-soft: #fff7f1;
   --orange-border: rgba(255,106,0,.24);
   --accent-soft: #eef1ff;
   --danger: #c2412d;
   --danger-soft: #fff1ee;
-  --field-bg: #f7f8fa;
+  --field-bg: #f0f2f5;
+  --group-line: #e1e5ea;
   --divider-bg: #ffffff;
 
   --ink: var(--text);
@@ -51,7 +57,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --header-bg: linear-gradient(112deg, #141883 0%, #2a2470 45%, #5c2f3a 78%, #8a3a10 100%);
+    --header-bg: #202c33;
+    --header-text: #e9edef;
 
     --app-bg: #0c1317;
     --chat-bg: #0b141a;
@@ -66,7 +73,10 @@
     --text: #e9edef;
     --text-2: #8696a0;
     --text-3: #54656f;
-    --accent: #8fa2ff;
+    --accent: #9aa8ff;
+    --accent-solid: #3d48e6;
+    --accent-solid-hover: #4954f0;
+    --accent-solid-active: #333dd0;
     --orange: #ff8a3d;
     --online: #2fd17c;
 
@@ -81,7 +91,7 @@
     --composer-bg: #202c33;
     --input-bg: #2a3942;
     --chip-bg: #1f2c33;
-    --chip-border: rgba(143,162,255,.16);
+    --chip-border: rgba(154,168,255,.28);
     --chip-border-hover: rgba(143,162,255,.36);
     --orange-soft: rgba(255,138,61,.10);
     --orange-border: rgba(255,138,61,.30);
@@ -89,17 +99,43 @@
     --danger: #ff8f7e;
     --danger-soft: rgba(255,110,90,.12);
     --field-bg: #2a3942;
+    --group-line: rgba(255,255,255,.08);
     --divider-bg: #182229;
   }
 }
 
 /* ---------- Page & header ---------- */
-body { background: var(--app-bg) !important; color: var(--text); }
+body { background: var(--app-bg) !important; color: var(--text); font-family: var(--font-ui) !important; }
+button, textarea, input, a { font-family: inherit; }
 @media (min-width: 1160px) {
-  .chat-app { box-shadow: 0 0 0 1px var(--line), 0 6px 30px rgba(0,0,0,.08) !important; }
+  .chat-app { box-shadow: 0 0 0 1px var(--line), 0 6px 30px rgba(0,0,0,.06) !important; }
 }
 .chat-app { background: var(--chat-bg) !important; }
-.chat-header { background: var(--header-bg) !important; }
+
+/* Native messenger header: plain surface, hairline, brand lives in the avatar */
+.chat-header {
+  color: var(--header-text) !important;
+  background: var(--header-bg) !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--line);
+}
+.contact-copy h1 { font-size: 17px !important; font-weight: 650 !important; letter-spacing: -.01em; }
+.contact-status { color: var(--text-2) !important; font-size: 13px !important; }
+.contact-status.is-typing { color: var(--online) !important; font-weight: 500 !important; }
+.avatar-wrap { background: #fff !important; box-shadow: 0 0 0 1px var(--line) !important; }
+.online-dot { border-color: var(--header-bg) !important; background: var(--online) !important; }
+
+.header-action {
+  border: 0 !important;
+  color: var(--text-2) !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+.header-action:hover { background: var(--hover) !important; color: var(--text) !important; }
+.header-action--primary { color: var(--accent) !important; font-size: 14px !important; font-weight: 600 !important; }
+.header-action--primary:hover { color: var(--accent) !important; background: var(--accent-soft) !important; }
+.header-action svg { stroke-width: 1.8 !important; }
 
 /* ---------- Chat wallpaper: subtle hand-drawn doodles ---------- */
 .messages {
@@ -119,8 +155,7 @@ body { background: var(--app-bg) !important; color: var(--text); }
   color: var(--text-2) !important;
   background: var(--divider-bg) !important;
   box-shadow: var(--bubble-shadow) !important;
-  font-size: 12px !important; font-weight: 500 !important;
-  text-transform: uppercase; letter-spacing: .02em;
+  font-size: 12.5px !important; font-weight: 500 !important;
 }
 
 /* ---------- Bubbles ---------- */
