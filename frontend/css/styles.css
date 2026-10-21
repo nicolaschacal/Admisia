@@ -62,11 +62,13 @@ a {
 
 .chat-app {
   position: fixed;
-  inset: 0;
+  top: var(--visual-top, 0px);
+  left: 0;
+  right: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   width: 100%;
-  height: 100dvh;
+  height: var(--visual-height, 100dvh);
   overflow: hidden;
   background: var(--chat-bg);
 }
@@ -872,5 +874,98 @@ a {
   .booking-action-button {
     min-height: 40px;
     font-size: 12px;
+  }
+}
+
+
+/* Persistent appointment controls */
+.appointment-card {
+  display: grid;
+  gap: 6px;
+}
+
+.appointment-card small {
+  color: var(--brand-blue-deep);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.appointment-card strong {
+  color: #213249;
+  font-size: 15px;
+}
+
+.appointment-card > span {
+  color: #778293;
+  font-size: 11px;
+}
+
+.appointment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 5px;
+}
+
+.appointment-actions button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(21,27,232,.15);
+  border-radius: 9px;
+  color: var(--brand-blue-deep);
+  background: #f7f7ff;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.appointment-actions .danger-link,
+.appointment-actions .danger-button {
+  color: #a43a2b;
+  border-color: rgba(164,58,43,.15);
+  background: #fff6f4;
+}
+
+.cancel-confirmation {
+  display: grid;
+  gap: 10px;
+}
+
+.cancel-confirmation p {
+  color: #35445a;
+  line-height: 1.45;
+  font-size: 13px;
+}
+
+/* Use the real visual viewport while the software keyboard is open. */
+body.keyboard-open .chat-app {
+  height: var(--visual-height, 100dvh);
+}
+
+body.keyboard-open .composer {
+  padding-bottom: 6px;
+}
+
+body.keyboard-open .composer-foot {
+  display: none;
+}
+
+body.keyboard-open .messages {
+  scroll-behavior: auto;
+}
+
+@media (max-width: 680px) {
+  .chat-app {
+    top: var(--visual-top, 0px);
+    height: var(--visual-height, 100dvh);
+  }
+
+  .messages {
+    scrollbar-gutter: auto;
+  }
+
+  .composer {
+    will-change: transform;
   }
 }
