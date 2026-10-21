@@ -26,6 +26,32 @@ let conversationHistory = [];
 let pendingAction = sessionStorage.getItem(PENDING_ACTION_KEY);
 let currentAppointment = null;
 
+const usesSoftwareKeyboardViewport =
+  window.matchMedia("(pointer: coarse)").matches &&
+  Number(navigator.maxTouchPoints || 0) > 0;
+
+let publicProfile = {
+  name: "Colegio Nubarian",
+  category: "Educación",
+  shortDescription: "Colegio Nubarian · Inicial y Primaria",
+  statusText: "Inscripciones abiertas",
+  addressLine1: "Av. Agraciada 2850",
+  addressLine2: "11800 Montevideo, Uruguay",
+  mapQuery: "Av. Agraciada 2850 Montevideo Uruguay",
+  phoneDisplay: "2208 0628",
+  phoneE164: "+59822080628",
+  email: "nubarian@nubarian.edu.uy",
+  website: "https://nubarian.edu.uy",
+  instagram: "https://www.instagram.com/colegionubarian/",
+  instagramLabel: "@colegionubarian",
+  facebook: "https://www.facebook.com/colegionubarian/",
+  facebookLabel: "Colegio Nubarian",
+  openHour: 8,
+  closeHour: 18,
+  weekdays: [1,2,3,4,5],
+  badgeEnabled: true
+};
+
 const params = new URLSearchParams(window.location.search);
 const attribution = {
   utmSource: params.get("utm_source") || "",
@@ -328,6 +354,94 @@ function showAppointmentCard(appointment = currentAppointment) {
   addCustomAssistantCard(wrap, "appointment-card-row");
 }
 
+function getProfileWebsiteLabel(value) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return String(value || "").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  }
+}
+
+function formatProfileWeekdays(days = []) {
+  const ordered = [...new Set((days || []).map(Number).filter((d) => d >= 1 && d <= 7))].sort((a,b) => a-b);
+  if (ordered.join(",") === "1,2,3,4,5") return "Lunes a viernes";
+
+  const labels = {1:"Lun",2:"Mar",3:"Mié",4:"Jue",5:"Vie",6:"Sáb",7:"Dom"};
+  return ordered.map((d) => labels[d]).join(", ") || "Consultar";
+}
+
+function applyPublicProfile() {
+  const setText = (id, value) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = value || "";
+  };
+
+  setText("header-profile-name", publicProfile.name);
+  setText("business-profile-name", publicProfile.name);
+  setText("business-profile-category", publicProfile.category);
+  setText("business-category-text", publicProfile.category);
+  setText("business-description-text", publicProfile.shortDescription);
+  setText("business-status-text", publicProfile.statusText);
+  setText("business-address-1", publicProfile.addressLine1);
+  setText("business-address-2", publicProfile.addressLine2);
+  setText("business-phone-display", publicProfile.phoneDisplay);
+  setText("business-email-display", publicProfile.email);
+  setText("business-instagram-display", publicProfile.instagramLabel);
+  setText("business-facebook-display", publicProfile.facebookLabel);
+  setText("business-hours-text", `${String(publicProfile.openHour).padStart(2,"0")}:00 a ${String(publicProfile.closeHour).padStart(2,"0")}:00`);
+  setText("business-days-text", formatProfileWeekdays(publicProfile.weekdays));
+  setText("business-website-display", getProfileWebsiteLabel(publicProfile.website));
+
+  document.querySelectorAll("[data-profile-badge]").forEach((badge) => {
+    badge.hidden = publicProfile.badgeEnabled === false;
+  });
+
+  const callHref = publicProfile.phoneE164 ? `tel:${publicProfile.phoneE164}` : "#";
+  const emailHref = publicProfile.email ? `mailto:${publicProfile.email}` : "#";
+  const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(publicProfile.mapQuery || publicProfile.addressLine1 || "")}`;
+
+  const hrefs = {
+    "business-call-action": callHref,
+    "business-phone-link": callHref,
+    "business-email-link": emailHref,
+    "business-map-link": mapHref,
+    "business-website-action": publicProfile.website || "#",
+    "business-website-link": publicProfile.website || "#",
+    "header-website-link": publicProfile.website || "#",
+    "footer-website-link": publicProfile.website || "#",
+    "business-instagram-link": publicProfile.instagram || "#",
+    "business-facebook-link": publicProfile.facebook || "#"
+  };
+
+  Object.entries(hrefs).forEach(([id, href]) => {
+    const node = document.getElementById(id);
+    if (node) node.href = href;
+  });
+
+  const footerWebsite = document.getElementById("footer-website-link");
+  if (footerWebsite) footerWebsite.textContent = getProfileWebsiteLabel(publicProfile.website);
+
+  document.title = `${publicProfile.name} | Admisiones`;
+  updateBusinessOpenStatus();
+}
+
+async function loadPublicProfile() {
+  try {
+    const response = await fetch("/api/profile", {
+      cache: "no-store",
+      credentials: "same-origin"
+    });
+    const data = await response.json();
+    if (response.ok && data.success && data.profile) {
+      publicProfile = { ...publicProfile, ...data.profile };
+    }
+  } catch (error) {
+    console.error("No se pudo cargar el perfil público:", error);
+  } finally {
+    applyPublicProfile();
+  }
+}
+
 function updateBusinessOpenStatus() {
   if (!businessOpenStatus) return;
 
@@ -338,17 +452,22 @@ function updateBusinessOpenStatus() {
     hour12: false
   }).formatToParts(new Date());
 
-  const weekday = parts.find((part) => part.type === "weekday")?.value;
+  const weekdayLabel = parts.find((part) => part.type === "weekday")?.value;
   const hour = Number(parts.find((part) => part.type === "hour")?.value);
-  const isWeekday = ["Mon","Tue","Wed","Thu","Fri"].includes(weekday);
-  const isOpen = isWeekday && hour >= 8 && hour < 18;
+  const weekdayMap = {Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6,Sun:7};
+  const weekday = weekdayMap[weekdayLabel];
+  const allowedDays = Array.isArray(publicProfile.weekdays) ? publicProfile.weekdays.map(Number) : [1,2,3,4,5];
+  const isOpen = allowedDays.includes(weekday) &&
+    hour >= Number(publicProfile.openHour ?? 8) &&
+    hour < Number(publicProfile.closeHour ?? 18);
 
   businessOpenStatus.textContent = isOpen ? "Abierto ahora" : "Horario de atención";
   businessOpenStatus.classList.toggle("is-closed", !isOpen);
 }
 
-function openBusinessProfile() {
+async function openBusinessProfile() {
   if (!businessProfile) return;
+  await profilePromise;
   messageInput.blur();
   businessProfile.hidden = false;
   businessProfile.setAttribute("aria-hidden", "false");
@@ -374,9 +493,9 @@ function closeBusinessProfile() {
 
 async function shareBusinessProfile() {
   const shareData = {
-    title: "Colegio Nubarian",
-    text: "Colegio Nubarian · Admisiones · Inicial y Primaria",
-    url: "https://nubarian.edu.uy"
+    title: publicProfile.name,
+    text: `${publicProfile.name} · Admisiones · ${publicProfile.shortDescription || publicProfile.category}`,
+    url: publicProfile.website || window.location.origin
   };
 
   try {
@@ -408,8 +527,6 @@ businessShareButton?.addEventListener("click", shareBusinessProfile);
 businessProfile?.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeBusinessProfile();
 });
-
-updateBusinessOpenStatus();
 
 function finishConversationBootstrap({ showWelcome = false } = {}) {
   const loading = document.getElementById("conversation-loading");
@@ -856,6 +973,12 @@ async function submitQuestion(text) {
 }
 
 function syncVisualViewport() {
+  if (!usesSoftwareKeyboardViewport) {
+    document.documentElement.style.removeProperty("--visual-height");
+    document.documentElement.style.removeProperty("--visual-top");
+    return;
+  }
+
   const viewport = window.visualViewport;
   const height = viewport ? viewport.height : window.innerHeight;
   const top = viewport ? viewport.offsetTop : 0;
@@ -865,8 +988,9 @@ function syncVisualViewport() {
 }
 
 function settleKeyboardViewport() {
-  syncVisualViewport();
+  if (!usesSoftwareKeyboardViewport) return;
 
+  syncVisualViewport();
   [40, 120, 240, 360].forEach((delay) => {
     setTimeout(() => {
       syncVisualViewport();
@@ -935,6 +1059,7 @@ messageInput.addEventListener("keydown", (event) => {
 });
 
 messageInput.addEventListener("focus", () => {
+  if (!usesSoftwareKeyboardViewport) return;
   document.body.classList.add("keyboard-open");
   settleKeyboardViewport();
 });
@@ -947,14 +1072,17 @@ messageInput.addEventListener("blur", () => {
     return;
   }
 
+  if (!usesSoftwareKeyboardViewport) return;
   document.body.classList.remove("keyboard-open");
   setTimeout(syncVisualViewport, 80);
 });
 
-window.visualViewport?.addEventListener("resize", settleKeyboardViewport);
-window.visualViewport?.addEventListener("scroll", syncVisualViewport);
-window.addEventListener("resize", syncVisualViewport);
-window.addEventListener("orientationchange", settleKeyboardViewport);
+if (usesSoftwareKeyboardViewport) {
+  window.visualViewport?.addEventListener("resize", settleKeyboardViewport);
+  window.visualViewport?.addEventListener("scroll", syncVisualViewport);
+  window.addEventListener("resize", syncVisualViewport);
+  window.addEventListener("orientationchange", settleKeyboardViewport);
+}
 
 quickQuestions.forEach((button) => {
   button.addEventListener("click", () => {
@@ -991,4 +1119,5 @@ document.addEventListener("gesturestart", (event) => event.preventDefault());
 
 syncVisualViewport();
 stampStaticTimes();
+const profilePromise = loadPublicProfile();
 const bootstrapPromise = bootstrapConversation();
