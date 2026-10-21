@@ -787,6 +787,48 @@ function settleKeyboardViewport() {
   });
 }
 
+let keepComposerFocused = false;
+let sendPointerHandled = false;
+
+sendButton.addEventListener("pointerdown", (event) => {
+  if (sendButton.disabled) return;
+
+  keepComposerFocused = true;
+
+  // Prevent iOS/WebKit from moving focus from the textarea to the button.
+  if (document.activeElement === messageInput) {
+    event.preventDefault();
+  }
+});
+
+sendButton.addEventListener("pointerup", (event) => {
+  if (sendButton.disabled) return;
+
+  event.preventDefault();
+  sendPointerHandled = true;
+  chatForm.requestSubmit();
+
+  requestAnimationFrame(() => {
+    messageInput.focus({ preventScroll: true });
+  });
+
+  setTimeout(() => {
+    keepComposerFocused = false;
+    sendPointerHandled = false;
+  }, 350);
+});
+
+sendButton.addEventListener("pointercancel", () => {
+  keepComposerFocused = false;
+  sendPointerHandled = false;
+});
+
+sendButton.addEventListener("click", (event) => {
+  if (sendPointerHandled) {
+    event.preventDefault();
+  }
+});
+
 chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await submitQuestion(messageInput.value);
@@ -810,6 +852,13 @@ messageInput.addEventListener("focus", () => {
 });
 
 messageInput.addEventListener("blur", () => {
+  if (keepComposerFocused) {
+    requestAnimationFrame(() => {
+      messageInput.focus({ preventScroll: true });
+    });
+    return;
+  }
+
   document.body.classList.remove("keyboard-open");
   setTimeout(syncVisualViewport, 80);
 });
