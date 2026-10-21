@@ -15,7 +15,8 @@ const handlers = {
   "knowledge": require("../handlers/crm/knowledge"),
   "integrations": require("../handlers/crm/integrations"),
   "team": require("../handlers/crm/team"),
-  "setup": require("../handlers/crm/setup")
+  "setup": require("../handlers/crm/setup"),
+  "recover-admin": require("../handlers/crm/recover-admin")
 };
 
 module.exports = async (req, res) => {
