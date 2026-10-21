@@ -320,10 +320,12 @@ async function loadSettings() {
 
     const booking = settingsData.settings.booking || {};
     const followup = settingsData.settings.followup || {};
+    const profile = settingsData.settings.profile || {};
     const isAdmin = currentManager?.role === "admin";
+    const weekdayOptions = [[1,"Lun"],[2,"Mar"],[3,"Mié"],[4,"Jue"],[5,"Vie"],[6,"Sáb"],[7,"Dom"]];
 
     view.innerHTML = `
-      <div class="detail-grid">
+      <div class="detail-grid settings-grid">
         <section class="section-card">
           <div class="section-head">
             <h2>Agenda de entrevistas</h2>
@@ -366,11 +368,9 @@ async function loadSettings() {
           </div>
 
           <div class="field">
-            <label>Días habilitados</label>
+            <label>Días habilitados para agenda</label>
             <div class="inline-actions">
-              ${[
-                [1,"Lun"],[2,"Mar"],[3,"Mié"],[4,"Jue"],[5,"Vie"],[6,"Sáb"],[7,"Dom"]
-              ].map(([v,label]) => `
+              ${weekdayOptions.map(([v,label]) => `
                 <label class="badge">
                   <input class="weekday-checkbox" type="checkbox" value="${v}"
                     ${(booking.weekdays || [1,2,3,4,5]).includes(v) ? "checked" : ""}
@@ -381,7 +381,7 @@ async function loadSettings() {
             </div>
           </div>
 
-          ${isAdmin ? '<button id="save-settings" class="primary">Guardar configuración</button>' : ""}
+          ${isAdmin ? '<button id="save-settings" class="primary">Guardar agenda</button>' : ""}
         </section>
 
         <section class="section-card">
@@ -409,39 +409,228 @@ async function loadSettings() {
             `).join("") : '<div class="empty">No hay bloqueos próximos.</div>'}
           </div>
         </section>
+
+        <section class="section-card profile-settings-card">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Perfil público</p>
+              <h2>Información del Colegio Nubarian</h2>
+              <p class="muted profile-settings-intro">Estos datos alimentan el encabezado y la pantalla “Info. de la empresa” del chat. Los cambios se reflejan sin editar código.</p>
+            </div>
+            <span class="badge">${isAdmin ? "Editable" : "Solo lectura"}</span>
+          </div>
+
+          <div class="profile-settings-columns">
+            <div class="profile-settings-group">
+              <h3>Identidad</h3>
+              <div class="form-row">
+                <div class="field">
+                  <label>Nombre público</label>
+                  <input id="profile-name" value="${esc(profile.name || "Colegio Nubarian")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+                <div class="field">
+                  <label>Categoría</label>
+                  <input id="profile-category" value="${esc(profile.category || "Educación")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Descripción corta</label>
+                <input id="profile-description" value="${esc(profile.shortDescription || "Colegio Nubarian · Inicial y Primaria")}" ${isAdmin ? "" : "disabled"}>
+              </div>
+
+              <div class="field">
+                <label>Estado / mensaje comercial</label>
+                <input id="profile-status-text" value="${esc(profile.statusText || "Inscripciones abiertas")}" ${isAdmin ? "" : "disabled"}>
+              </div>
+
+              <label class="profile-toggle">
+                <input id="profile-badge" type="checkbox" ${profile.badgeEnabled !== false ? "checked" : ""} ${isAdmin ? "" : "disabled"}>
+                <span>Mostrar badge azul de perfil institucional</span>
+              </label>
+            </div>
+
+            <div class="profile-settings-group">
+              <h3>Ubicación y contacto</h3>
+              <div class="form-row">
+                <div class="field">
+                  <label>Dirección</label>
+                  <input id="profile-address-1" value="${esc(profile.addressLine1 || "Av. Agraciada 2850")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+                <div class="field">
+                  <label>Ciudad / país</label>
+                  <input id="profile-address-2" value="${esc(profile.addressLine2 || "11800 Montevideo, Uruguay")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Texto para abrir en mapas</label>
+                <input id="profile-map-query" value="${esc(profile.mapQuery || "Av. Agraciada 2850 Montevideo Uruguay")}" ${isAdmin ? "" : "disabled"}>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label>Teléfono visible</label>
+                  <input id="profile-phone-display" value="${esc(profile.phoneDisplay || "2208 0628")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+                <div class="field">
+                  <label>Teléfono internacional</label>
+                  <input id="profile-phone-e164" value="${esc(profile.phoneE164 || "+59822080628")}" placeholder="+598..." ${isAdmin ? "" : "disabled"}>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Correo</label>
+                <input id="profile-email" type="email" value="${esc(profile.email || "nubarian@nubarian.edu.uy")}" ${isAdmin ? "" : "disabled"}>
+              </div>
+            </div>
+
+            <div class="profile-settings-group">
+              <h3>Web y redes</h3>
+              <div class="field">
+                <label>Sitio web</label>
+                <input id="profile-website" type="url" value="${esc(profile.website || "https://nubarian.edu.uy")}" ${isAdmin ? "" : "disabled"}>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label>Instagram URL</label>
+                  <input id="profile-instagram" type="url" value="${esc(profile.instagram || "")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+                <div class="field">
+                  <label>Instagram visible</label>
+                  <input id="profile-instagram-label" value="${esc(profile.instagramLabel || "@colegionubarian")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label>Facebook URL</label>
+                  <input id="profile-facebook" type="url" value="${esc(profile.facebook || "")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+                <div class="field">
+                  <label>Facebook visible</label>
+                  <input id="profile-facebook-label" value="${esc(profile.facebookLabel || "Colegio Nubarian")}" ${isAdmin ? "" : "disabled"}>
+                </div>
+              </div>
+            </div>
+
+            <div class="profile-settings-group">
+              <h3>Horario público</h3>
+              <div class="form-row">
+                <div class="field">
+                  <label>Abre</label>
+                  <input id="profile-open-hour" type="number" min="0" max="23" value="${profile.openHour ?? 8}" ${isAdmin ? "" : "disabled"}>
+                </div>
+                <div class="field">
+                  <label>Cierra</label>
+                  <input id="profile-close-hour" type="number" min="1" max="24" value="${profile.closeHour ?? 18}" ${isAdmin ? "" : "disabled"}>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Días de atención pública</label>
+                <div class="inline-actions">
+                  ${weekdayOptions.map(([v,label]) => `
+                    <label class="badge">
+                      <input class="profile-weekday-checkbox" type="checkbox" value="${v}"
+                        ${(profile.weekdays || [1,2,3,4,5]).includes(v) ? "checked" : ""}
+                        ${isAdmin ? "" : "disabled"}>
+                      ${label}
+                    </label>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          ${isAdmin ? '<div class="profile-settings-actions"><button id="save-profile-settings" class="primary">Guardar perfil público</button><span id="profile-save-status" class="muted"></span></div>' : ""}
+        </section>
       </div>
     `;
 
     if (isAdmin) {
-      document.getElementById("save-settings").addEventListener("click", async () => {
-        const weekdays = [...document.querySelectorAll(".weekday-checkbox:checked")].map(el => Number(el.value));
+      const collectPayload = () => ({
+        booking:{
+          openHour:Number(document.getElementById("setting-open").value),
+          closeHour:Number(document.getElementById("setting-close").value),
+          slotMinutes:Number(document.getElementById("setting-slot").value),
+          minDaysAhead:Number(document.getElementById("setting-min-days").value),
+          maxDaysAhead:Number(document.getElementById("setting-max-days").value),
+          weekdays:[...document.querySelectorAll(".weekday-checkbox:checked")].map(el => Number(el.value))
+        },
+        followup:{
+          daysAfterInterview:Number(document.getElementById("setting-followup-days").value)
+        },
+        profile:{
+          name:document.getElementById("profile-name").value,
+          category:document.getElementById("profile-category").value,
+          shortDescription:document.getElementById("profile-description").value,
+          statusText:document.getElementById("profile-status-text").value,
+          badgeEnabled:document.getElementById("profile-badge").checked,
+          addressLine1:document.getElementById("profile-address-1").value,
+          addressLine2:document.getElementById("profile-address-2").value,
+          mapQuery:document.getElementById("profile-map-query").value,
+          phoneDisplay:document.getElementById("profile-phone-display").value,
+          phoneE164:document.getElementById("profile-phone-e164").value,
+          email:document.getElementById("profile-email").value,
+          website:document.getElementById("profile-website").value,
+          instagram:document.getElementById("profile-instagram").value,
+          instagramLabel:document.getElementById("profile-instagram-label").value,
+          facebook:document.getElementById("profile-facebook").value,
+          facebookLabel:document.getElementById("profile-facebook-label").value,
+          openHour:Number(document.getElementById("profile-open-hour").value),
+          closeHour:Number(document.getElementById("profile-close-hour").value),
+          weekdays:[...document.querySelectorAll(".profile-weekday-checkbox:checked")].map(el => Number(el.value))
+        }
+      });
+
+      const saveAllSettings = async (sourceButton, successMessage) => {
+        const button = sourceButton;
+        const original = button?.textContent;
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Guardando…";
+        }
+
         try {
           await api("/api/crm/settings", {
             method:"POST",
-            body:JSON.stringify({
-              booking:{
-                openHour:Number(document.getElementById("setting-open").value),
-                closeHour:Number(document.getElementById("setting-close").value),
-                slotMinutes:Number(document.getElementById("setting-slot").value),
-                minDaysAhead:Number(document.getElementById("setting-min-days").value),
-                maxDaysAhead:Number(document.getElementById("setting-max-days").value),
-                weekdays
-              },
-              followup:{
-                daysAfterInterview:Number(document.getElementById("setting-followup-days").value)
-              }
-            })
+            body:JSON.stringify(collectPayload())
           });
-          alert("Configuración guardada.");
-          await loadSettings();
-        } catch (error) { alert(error.message); }
+          const status = document.getElementById("profile-save-status");
+          if (status) status.textContent = successMessage;
+          if (!status) alert(successMessage);
+          if (button) button.textContent = "Guardado ✓";
+          setTimeout(() => {
+            if (button) {
+              button.disabled = false;
+              button.textContent = original;
+            }
+          }, 1000);
+        } catch (error) {
+          if (button) {
+            button.disabled = false;
+            button.textContent = original;
+          }
+          alert(error.message);
+        }
+      };
+
+      document.getElementById("save-settings")?.addEventListener("click", (event) => {
+        saveAllSettings(event.currentTarget, "Configuración de agenda guardada.");
       });
 
-      document.getElementById("create-block").addEventListener("click", async () => {
+      document.getElementById("save-profile-settings")?.addEventListener("click", (event) => {
+        saveAllSettings(event.currentTarget, "Perfil público actualizado.");
+      });
+
+      document.getElementById("create-block")?.addEventListener("click", async () => {
         const start = document.getElementById("block-start").value;
         const end = document.getElementById("block-end").value;
         const reason = document.getElementById("block-reason").value;
         if (!start || !end) return alert("Elegí fecha y hora de inicio y fin.");
+
         try {
           await api("/api/crm/blocked-slots", {
             method:"POST",
@@ -453,7 +642,9 @@ async function loadSettings() {
             })
           });
           await loadSettings();
-        } catch (error) { alert(error.message); }
+        } catch (error) {
+          alert(error.message);
+        }
       });
 
       view.querySelectorAll("[data-block-delete]").forEach(btn => btn.addEventListener("click", async () => {
@@ -464,7 +655,9 @@ async function loadSettings() {
             body:JSON.stringify({ action:"delete", id:btn.dataset.blockDelete })
           });
           await loadSettings();
-        } catch (error) { alert(error.message); }
+        } catch (error) {
+          alert(error.message);
+        }
       }));
     }
   } catch (error) {
