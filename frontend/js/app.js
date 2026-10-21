@@ -146,30 +146,30 @@ function addMessage(text, sender, options = {}) {
 
   const message = document.createElement("div");
   message.className = `message ${sender === "user" ? "user-message" : "assistant-message"}`;
-  message.textContent = text;
 
-  const meta = document.createElement("div");
-  meta.className = "message-meta";
+  const body = document.createElement("span");
+  body.className = "message-text";
+  body.textContent = text;
+
   const timestamp = options.timestamp || new Date();
+  const meta = document.createElement("span");
+  meta.className = "message-meta";
+
+  const time = document.createElement("span");
+  time.className = "message-time";
+  time.textContent = messageTime(timestamp);
+  meta.appendChild(time);
 
   if (sender === "user") {
     const delivery = document.createElement("span");
     delivery.className = "delivery-check";
-    delivery.textContent = "✓✓";
-
-    const time = document.createElement("span");
-    time.textContent = messageTime(timestamp);
-    meta.append(delivery, time);
-  } else {
-    const author = document.createElement("span");
-    author.textContent = "Admisiones";
-
-    const time = document.createElement("span");
-    time.textContent = messageTime(timestamp);
-    meta.append(author, time);
+    delivery.setAttribute("aria-label", "Leído");
+    delivery.innerHTML = '<svg viewBox="0 0 18 11" aria-hidden="true"><path d="M1 6l3.2 3.2L11 1.6M7 9.2 15.6 1.6"/></svg>';
+    meta.appendChild(delivery);
   }
 
-  stack.append(message, meta);
+  message.append(body, meta);
+  stack.appendChild(message);
   row.appendChild(stack);
   root.appendChild(row);
 
@@ -191,11 +191,12 @@ function addCustomAssistantCard(node, extraClass = "") {
   card.className = "message assistant-message";
   card.appendChild(node);
 
-  const meta = document.createElement("div");
-  meta.className = "message-meta";
-  meta.innerHTML = `<span>Admisiones</span><span>${messageTime()}</span>`;
+  const meta = document.createElement("span");
+  meta.className = "message-meta message-meta--block";
+  meta.innerHTML = `<span class="message-time">${messageTime()}</span>`;
+  card.appendChild(meta);
 
-  stack.append(card, meta);
+  stack.appendChild(card);
   row.appendChild(stack);
   root.appendChild(row);
 

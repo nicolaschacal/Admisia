@@ -1,0 +1,278 @@
+/* Messenger theme: WhatsApp / Telegram feel, light & dark (follows the OS).
+   Loaded last; overrides colors and chat chrome from styles.css. */
+
+:root {
+  color-scheme: light;
+  --brand-gradient: linear-gradient(112deg, var(--brand-blue) 0%, #4935b8 43%, #cc5d4d 75%, var(--brand-orange) 100%);
+  --header-bg: var(--brand-gradient);
+
+  --app-bg: #e5e7eb;
+  --chat-bg: #efeae2;
+  --doodle: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22360%22 height=%22360%22 viewBox=%220 0 360 360%22 fill=%22none%22 stroke=%22%234a3f2f%22 stroke-opacity=%22.11%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cg transform=%22translate%2814 12%29 rotate%28-8 12 12%29 scale%281.15%29%22%3E%3Cpath d=%22M4 5h16v10H10l-4 4v-4H4z%22/%3E%3C/g%3E%3Cg transform=%22translate%2888 6%29 rotate%2812 12 12%29 scale%280.95%29%22%3E%3Cpath d=%22m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z%22/%3E%3C/g%3E%3Cg transform=%22translate%28160 18%29 rotate%28-6 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M4 8h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z%22/%3E%3Cpath d=%22M16 10h2a2.5 2.5 0 0 1 0 5h-2%22/%3E%3Cpath d=%22M8 3c0 1.5 1 1.5 1 3M12 3c0 1.5 1 1.5 1 3%22/%3E%3C/g%3E%3Cg transform=%22translate%28238 8%29 rotate%2810 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M3 11 21 3l-6 18-3-7z%22/%3E%3Cpath d=%22m12 14 9-11%22/%3E%3C/g%3E%3Cg transform=%22translate%28310 20%29 rotate%28-10 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M9 18V5l10-2v13%22/%3E%3Ccircle cx=%226.5%22 cy=%2218%22 r=%222.5%22/%3E%3Ccircle cx=%2216.5%22 cy=%2216%22 r=%222.5%22/%3E%3C/g%3E%3Cg transform=%22translate%2850 78%29 rotate%288 12 12%29 scale%281.05%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%228%22/%3E%3Cpath d=%22M8.5 14a4 4 0 0 0 7 0%22/%3E%3Cpath d=%22M9 9.5h.01M15 9.5h.01%22/%3E%3C/g%3E%3Cg transform=%22translate%28124 70%29 rotate%28-20 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M4 20l1-4L16 5l3 3L8 19z%22/%3E%3Cpath d=%22m14 7 3 3%22/%3E%3C/g%3E%3Cg transform=%22translate%28196 84%29 rotate%280 12 12%29 scale%281.2%29%22%3E%3Cpath d=%22M7 18a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 .5 9z%22/%3E%3C/g%3E%3Cg transform=%22translate%28276 76%29 rotate%28-12 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M12 20s-7-4.4-7-9.5A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 2.5C19 15.6 12 20 12 20z%22/%3E%3C/g%3E%3Cg transform=%22translate%288 146%29 rotate%28-6 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1z%22/%3E%3Cpath d=%22M12 6v14%22/%3E%3C/g%3E%3Cg transform=%22translate%2886 140%29 rotate%2810 12 12%29 scale%281.0%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%228%22/%3E%3Cpath d=%22M12 7v5l3 2%22/%3E%3C/g%3E%3Cg transform=%22translate%28158 150%29 rotate%28-14 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M5 19C5 10 10 5 19 5c0 9-5 14-14 14z%22/%3E%3Cpath d=%22M5 19 13 11%22/%3E%3C/g%3E%3Cg transform=%22translate%28230 146%29 rotate%288 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M3 8h4l2-3h6l2 3h4v11H3z%22/%3E%3Ccircle cx=%2212%22 cy=%2213%22 r=%223.5%22/%3E%3C/g%3E%3Cg transform=%22translate%28312 140%29 rotate%280 12 12%29 scale%281.0%29%22%3E%3Ccircle cx=%226%22 cy=%2212%22 r=%221.2%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.2%22/%3E%3Ccircle cx=%2218%22 cy=%2212%22 r=%221.2%22/%3E%3C/g%3E%3Cg transform=%22translate%2842 214%29 rotate%28-10 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M19 14.5A8 8 0 0 1 9.5 5a8 8 0 1 0 9.5 9.5z%22/%3E%3C/g%3E%3Cg transform=%22translate%28116 212%29 rotate%286 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M4 10h16v10H4zM3 7h18v3H3zM12 7v13%22/%3E%3Cpath d=%22M12 7c-2-4-6-3-4 0M12 7c2-4 6-3 4 0%22/%3E%3C/g%3E%3Cg transform=%22translate%28192 216%29 rotate%28-6 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M9 17h6M10 20h4%22/%3E%3Cpath d=%22M8.5 14A6 6 0 1 1 15.5 14c-.8.8-1 1.6-1 3h-5c0-1.4-.2-2.2-1-3z%22/%3E%3C/g%3E%3Cg transform=%22translate%28262 212%29 rotate%2812 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M3 6h18v12H3z%22/%3E%3Cpath d=%22m3 7 9 6 9-6%22/%3E%3C/g%3E%3Cg transform=%22translate%28328 206%29 rotate%280 12 12%29 scale%280.8%29%22%3E%3Cpath d=%22M12 3v6M12 15v6M3 12h6M15 12h6%22/%3E%3C/g%3E%3Cg transform=%22translate%286 286%29 rotate%2810 12 12%29 scale%281.1%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%225%22/%3E%3Cpath d=%22M4 15c-2 2 0 3 4 2s9-5 11-8 0-4-3-3%22/%3E%3C/g%3E%3Cg transform=%22translate%2880 282%29 rotate%28-8 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M12 15c-3.5 0-6-3-6-6.5a6 6 0 0 1 12 0C18 12 15.5 15 12 15z%22/%3E%3Cpath d=%22M12 15l-1 1.5h2zM12 16.5c0 2-2 2.5-1 5%22/%3E%3C/g%3E%3Cg transform=%22translate%28152 284%29 rotate%284 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M4 15v-3a8 8 0 0 1 16 0v3%22/%3E%3Cpath d=%22M4 15h3v5H4zM17 15h3v5h-3z%22/%3E%3C/g%3E%3Cg transform=%22translate%28226 286%29 rotate%28-10 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0z%22/%3E%3Ccircle cx=%2212%22 cy=%2210%22 r=%222.5%22/%3E%3C/g%3E%3Cg transform=%22translate%28298 276%29 rotate%286 12 12%29 scale%281.05%29%22%3E%3Ccircle cx=%2212%22 cy=%2210%22 r=%222%22/%3E%3Cpath d=%22M12 8c-1-4 3-4 2 0M14 10c4-1 4 3 0 2M12 12c1 4-3 4-2 0M10 10c-4 1-4-3 0-2%22/%3E%3Cpath d=%22M12 12v9M12 17c-2 0-3-1-4-2%22/%3E%3C/g%3E%3Cg transform=%22translate%28332 98%29 rotate%2825 12 12%29 scale%280.9%29%22%3E%3Cpath d=%22M16 7l-7 7a2 2 0 0 0 3 3l7-7a4 4 0 0 0-6-6l-7 7a6 6 0 0 0 8 8l6-6%22/%3E%3C/g%3E%3Cg transform=%22translate%28332 322%29 rotate%280 12 12%29 scale%280.85%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%224%22/%3E%3Cpath d=%22M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2%22/%3E%3C/g%3E%3C/svg%3E");
+
+  --profile-bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --hover: #f5f6f6;
+  --line: #e9edef;
+
+  --text: #111b21;
+  --text-2: #667781;
+  --text-3: #aebac1;
+  --accent: #1f5bff;
+  --orange: #f26200;
+  --online: #13a85c;
+
+  --bubble-in: #ffffff;
+  --bubble-out: #dfe6ff;
+  --bubble-out-text: #111b21;
+  --bubble-shadow: 0 1px .5px rgba(11,20,26,.13);
+  --meta: #667781;
+  --meta-out: #5f6f8a;
+  --check: #53bdeb;
+
+  --composer-bg: #f0f2f5;
+  --input-bg: #ffffff;
+  --chip-bg: rgba(255,255,255,.95);
+  --divider-bg: #ffffff;
+
+  --ink: var(--text);
+  --muted: var(--text-2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --header-bg: linear-gradient(112deg, #141883 0%, #2a2470 45%, #5c2f3a 78%, #8a3a10 100%);
+
+    --app-bg: #0c1317;
+    --chat-bg: #0b141a;
+    --doodle: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22360%22 height=%22360%22 viewBox=%220 0 360 360%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-opacity=%22.055%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cg transform=%22translate%2814 12%29 rotate%28-8 12 12%29 scale%281.15%29%22%3E%3Cpath d=%22M4 5h16v10H10l-4 4v-4H4z%22/%3E%3C/g%3E%3Cg transform=%22translate%2888 6%29 rotate%2812 12 12%29 scale%280.95%29%22%3E%3Cpath d=%22m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z%22/%3E%3C/g%3E%3Cg transform=%22translate%28160 18%29 rotate%28-6 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M4 8h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z%22/%3E%3Cpath d=%22M16 10h2a2.5 2.5 0 0 1 0 5h-2%22/%3E%3Cpath d=%22M8 3c0 1.5 1 1.5 1 3M12 3c0 1.5 1 1.5 1 3%22/%3E%3C/g%3E%3Cg transform=%22translate%28238 8%29 rotate%2810 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M3 11 21 3l-6 18-3-7z%22/%3E%3Cpath d=%22m12 14 9-11%22/%3E%3C/g%3E%3Cg transform=%22translate%28310 20%29 rotate%28-10 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M9 18V5l10-2v13%22/%3E%3Ccircle cx=%226.5%22 cy=%2218%22 r=%222.5%22/%3E%3Ccircle cx=%2216.5%22 cy=%2216%22 r=%222.5%22/%3E%3C/g%3E%3Cg transform=%22translate%2850 78%29 rotate%288 12 12%29 scale%281.05%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%228%22/%3E%3Cpath d=%22M8.5 14a4 4 0 0 0 7 0%22/%3E%3Cpath d=%22M9 9.5h.01M15 9.5h.01%22/%3E%3C/g%3E%3Cg transform=%22translate%28124 70%29 rotate%28-20 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M4 20l1-4L16 5l3 3L8 19z%22/%3E%3Cpath d=%22m14 7 3 3%22/%3E%3C/g%3E%3Cg transform=%22translate%28196 84%29 rotate%280 12 12%29 scale%281.2%29%22%3E%3Cpath d=%22M7 18a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 .5 9z%22/%3E%3C/g%3E%3Cg transform=%22translate%28276 76%29 rotate%28-12 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M12 20s-7-4.4-7-9.5A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 2.5C19 15.6 12 20 12 20z%22/%3E%3C/g%3E%3Cg transform=%22translate%288 146%29 rotate%28-6 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1z%22/%3E%3Cpath d=%22M12 6v14%22/%3E%3C/g%3E%3Cg transform=%22translate%2886 140%29 rotate%2810 12 12%29 scale%281.0%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%228%22/%3E%3Cpath d=%22M12 7v5l3 2%22/%3E%3C/g%3E%3Cg transform=%22translate%28158 150%29 rotate%28-14 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M5 19C5 10 10 5 19 5c0 9-5 14-14 14z%22/%3E%3Cpath d=%22M5 19 13 11%22/%3E%3C/g%3E%3Cg transform=%22translate%28230 146%29 rotate%288 12 12%29 scale%281.1%29%22%3E%3Cpath d=%22M3 8h4l2-3h6l2 3h4v11H3z%22/%3E%3Ccircle cx=%2212%22 cy=%2213%22 r=%223.5%22/%3E%3C/g%3E%3Cg transform=%22translate%28312 140%29 rotate%280 12 12%29 scale%281.0%29%22%3E%3Ccircle cx=%226%22 cy=%2212%22 r=%221.2%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.2%22/%3E%3Ccircle cx=%2218%22 cy=%2212%22 r=%221.2%22/%3E%3C/g%3E%3Cg transform=%22translate%2842 214%29 rotate%28-10 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M19 14.5A8 8 0 0 1 9.5 5a8 8 0 1 0 9.5 9.5z%22/%3E%3C/g%3E%3Cg transform=%22translate%28116 212%29 rotate%286 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M4 10h16v10H4zM3 7h18v3H3zM12 7v13%22/%3E%3Cpath d=%22M12 7c-2-4-6-3-4 0M12 7c2-4 6-3 4 0%22/%3E%3C/g%3E%3Cg transform=%22translate%28192 216%29 rotate%28-6 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M9 17h6M10 20h4%22/%3E%3Cpath d=%22M8.5 14A6 6 0 1 1 15.5 14c-.8.8-1 1.6-1 3h-5c0-1.4-.2-2.2-1-3z%22/%3E%3C/g%3E%3Cg transform=%22translate%28262 212%29 rotate%2812 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M3 6h18v12H3z%22/%3E%3Cpath d=%22m3 7 9 6 9-6%22/%3E%3C/g%3E%3Cg transform=%22translate%28328 206%29 rotate%280 12 12%29 scale%280.8%29%22%3E%3Cpath d=%22M12 3v6M12 15v6M3 12h6M15 12h6%22/%3E%3C/g%3E%3Cg transform=%22translate%286 286%29 rotate%2810 12 12%29 scale%281.1%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%225%22/%3E%3Cpath d=%22M4 15c-2 2 0 3 4 2s9-5 11-8 0-4-3-3%22/%3E%3C/g%3E%3Cg transform=%22translate%2880 282%29 rotate%28-8 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M12 15c-3.5 0-6-3-6-6.5a6 6 0 0 1 12 0C18 12 15.5 15 12 15z%22/%3E%3Cpath d=%22M12 15l-1 1.5h2zM12 16.5c0 2-2 2.5-1 5%22/%3E%3C/g%3E%3Cg transform=%22translate%28152 284%29 rotate%284 12 12%29 scale%281.05%29%22%3E%3Cpath d=%22M4 15v-3a8 8 0 0 1 16 0v3%22/%3E%3Cpath d=%22M4 15h3v5H4zM17 15h3v5h-3z%22/%3E%3C/g%3E%3Cg transform=%22translate%28226 286%29 rotate%28-10 12 12%29 scale%281.0%29%22%3E%3Cpath d=%22M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0z%22/%3E%3Ccircle cx=%2212%22 cy=%2210%22 r=%222.5%22/%3E%3C/g%3E%3Cg transform=%22translate%28298 276%29 rotate%286 12 12%29 scale%281.05%29%22%3E%3Ccircle cx=%2212%22 cy=%2210%22 r=%222%22/%3E%3Cpath d=%22M12 8c-1-4 3-4 2 0M14 10c4-1 4 3 0 2M12 12c1 4-3 4-2 0M10 10c-4 1-4-3 0-2%22/%3E%3Cpath d=%22M12 12v9M12 17c-2 0-3-1-4-2%22/%3E%3C/g%3E%3Cg transform=%22translate%28332 98%29 rotate%2825 12 12%29 scale%280.9%29%22%3E%3Cpath d=%22M16 7l-7 7a2 2 0 0 0 3 3l7-7a4 4 0 0 0-6-6l-7 7a6 6 0 0 0 8 8l6-6%22/%3E%3C/g%3E%3Cg transform=%22translate%28332 322%29 rotate%280 12 12%29 scale%280.85%29%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%224%22/%3E%3Cpath d=%22M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2%22/%3E%3C/g%3E%3C/svg%3E");
+
+    --profile-bg: #0b141a;
+    --surface: #111b21;
+    --surface-2: #202c33;
+    --hover: #1b262c;
+    --line: #222d34;
+
+    --text: #e9edef;
+    --text-2: #8696a0;
+    --text-3: #54656f;
+    --accent: #8fa2ff;
+    --orange: #ff8a3d;
+    --online: #2fd17c;
+
+    --bubble-in: #202c33;
+    --bubble-out: #2b3196;
+    --bubble-out-text: #eef0ff;
+    --bubble-shadow: 0 1px .5px rgba(0,0,0,.35);
+    --meta: rgba(233,237,239,.6);
+    --meta-out: rgba(238,240,255,.65);
+    --check: #6fd2ff;
+
+    --composer-bg: #202c33;
+    --input-bg: #2a3942;
+    --chip-bg: #1f2c33;
+    --divider-bg: #182229;
+  }
+}
+
+/* ---------- Page & header ---------- */
+body { background: var(--app-bg) !important; color: var(--text); }
+@media (min-width: 1160px) {
+  .chat-app { box-shadow: 0 0 0 1px var(--line), 0 6px 30px rgba(0,0,0,.08) !important; }
+}
+.chat-app { background: var(--chat-bg) !important; }
+.chat-header { background: var(--header-bg) !important; }
+
+/* ---------- Chat wallpaper: subtle hand-drawn doodles ---------- */
+.messages {
+  background-color: var(--chat-bg) !important;
+  background-image: var(--doodle) !important;
+  background-size: 360px 360px !important;
+  background-repeat: repeat !important;
+  background-position: center top !important;
+  scrollbar-color: color-mix(in srgb, var(--text-2) 35%, transparent) transparent;
+}
+.messages::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text-2) 35%, transparent) !important; }
+
+/* ---------- Day divider ---------- */
+.day-divider span {
+  padding: 5px 12px !important;
+  border-radius: 8px !important;
+  color: var(--text-2) !important;
+  background: var(--divider-bg) !important;
+  box-shadow: var(--bubble-shadow) !important;
+  font-size: 12px !important; font-weight: 500 !important;
+  text-transform: uppercase; letter-spacing: .02em;
+}
+
+/* ---------- Bubbles ---------- */
+.message-row { margin-bottom: 4px !important; }
+.message-row + .message-row.user,
+.message-row.assistant + .message-row.assistant { margin-top: 0; }
+.message-row.user + .message-row.assistant,
+.message-row.assistant + .message-row.user { margin-top: 10px; }
+
+.message {
+  padding: 6px 9px 7px 10px !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  line-height: 1.38 !important;
+  box-shadow: var(--bubble-shadow) !important;
+}
+.assistant-message {
+  color: var(--text) !important;
+  background: var(--bubble-in) !important;
+  border-top-left-radius: 0 !important;
+}
+.user-message {
+  color: var(--bubble-out-text) !important;
+  background: var(--bubble-out) !important;
+  border-top-right-radius: 0 !important;
+}
+.assistant-message::before,
+.user-message::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  width: 8px !important; height: 13px !important;
+}
+.assistant-message::before {
+  left: -8px !important; right: auto !important;
+  background: var(--bubble-in) !important;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.user-message::after {
+  right: -8px !important; left: auto !important;
+  background: var(--bubble-out) !important;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+/* Only the first bubble of a run keeps its tail */
+.message-row.assistant + .message-row.assistant .assistant-message::before,
+.message-row.user + .message-row.user .user-message::after { display: none !important; }
+.message-row.assistant + .message-row.assistant .assistant-message { border-top-left-radius: 8px !important; }
+.message-row.user + .message-row.user .user-message { border-top-right-radius: 8px !important; }
+
+/* Time + ticks inside the bubble, bottom-right (WhatsApp) */
+.message .message-meta {
+  float: right;
+  position: relative;
+  top: 7px;
+  margin: -6px -2px 0 12px !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 3px !important;
+  color: var(--meta) !important;
+  font-size: 11px !important;
+  line-height: 15px;
+  white-space: nowrap;
+  user-select: none;
+}
+.user-message .message-meta { color: var(--meta-out) !important; }
+.message .message-meta--block {
+  float: none;
+  top: 0;
+  display: flex !important;
+  justify-content: flex-end;
+  margin: 4px -2px -2px 0 !important;
+}
+.delivery-check {
+  display: inline-grid !important;
+  padding: 0 !important;
+  color: var(--check) !important;
+  letter-spacing: 0 !important;
+}
+.delivery-check svg { width: 16px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Typing indicator ---------- */
+.typing-bubble { background: var(--bubble-in) !important; box-shadow: var(--bubble-shadow) !important; border-radius: 0 12px 12px 12px !important; }
+.typing-bubble span { background: var(--text-2) !important; }
+.typing-indicator small { color: var(--text-2) !important; }
+
+/* ---------- Quick replies (Telegram-style inline buttons) ---------- */
+.quick-label {
+  color: var(--text-2) !important;
+  display: inline-block;
+  padding: 3px 9px; border-radius: 8px;
+  background: var(--divider-bg); box-shadow: var(--bubble-shadow);
+  font-weight: 500 !important;
+}
+.quick-question {
+  border: 0 !important;
+  color: var(--accent) !important;
+  background: var(--chip-bg) !important;
+  box-shadow: var(--bubble-shadow) !important;
+  justify-content: center !important;
+  position: relative;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  backdrop-filter: blur(6px);
+}
+.quick-question > span:last-child { position: absolute; right: 12px; color: var(--text-3) !important; }
+.quick-question--primary { color: var(--orange) !important; }
+.booking-action-button {
+  color: var(--orange) !important;
+  background: var(--chip-bg) !important;
+  border: 0 !important;
+  box-shadow: var(--bubble-shadow) !important;
+}
+
+/* ---------- Composer ---------- */
+.composer {
+  background: var(--composer-bg) !important;
+  border-top: 0 !important;
+  backdrop-filter: none !important;
+}
+.chat-form {
+  border: 0 !important;
+  background: var(--input-bg) !important;
+  box-shadow: none !important;
+}
+.chat-form:focus-within { box-shadow: none !important; }
+.chat-form textarea { color: var(--text) !important; }
+.chat-form textarea::placeholder { color: var(--text-2) !important; }
+.composer-foot { color: var(--text-2) !important; }
+.composer-foot a { color: var(--text-2) !important; }
+
+/* ---------- Loading ---------- */
+.conversation-loading-card {
+  color: var(--text-2) !important;
+  background: var(--divider-bg) !important;
+  border: 0 !important;
+  box-shadow: var(--bubble-shadow) !important;
+}
+.conversation-loading-dots span { background: var(--text-2) !important; }
+
+/* ---------- Booking / appointment cards inside bubbles (dark mode) ---------- */
+@media (prefers-color-scheme: dark) {
+  .slot-day > strong,
+  .booking-heading,
+  .booking-form label,
+  .appointment-card strong,
+  .cancel-confirmation p { color: var(--text) !important; }
+  .booking-form label span,
+  .appointment-card > span,
+  .booking-success small { color: var(--text-2) !important; }
+  .slot-button,
+  .appointment-actions button {
+    color: var(--accent) !important;
+    background: var(--surface-2) !important;
+    border-color: transparent !important;
+  }
+  .slot-button:hover { background: #2a3942 !important; }
+  .appointment-card small,
+  .booking-success strong { color: var(--accent) !important; }
+  .booking-form textarea,
+  .booking-form input:not([type="checkbox"]) {
+    color: var(--text) !important;
+    background: var(--input-bg) !important;
+    border-color: var(--line) !important;
+  }
+  .booking-error,
+  .appointment-actions .danger-button {
+    color: #ff9b8a !important;
+    background: rgba(255,90,70,.12) !important;
+    border-color: transparent !important;
+  }
+}

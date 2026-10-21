@@ -1,315 +1,278 @@
-/* WhatsApp-inspired public business profile
-   Integrated layout: full-bleed sections (no floating cards), cover that
-   flows out of the top bar, one native scroll and a docked CTA.
-   On desktop it opens as a side pane next to the chat (split view). */
+/* WhatsApp-style business profile.
+   One layout for every screen size: plain top bar, avatar, filled action
+   tiles and full-bleed sections. Sized with dvh so it fits the viewport
+   without scrolling. On desktop it opens as a side pane next to the chat.
+   Colors come from the tokens in messenger-theme.css (light/dark). */
 
 html, body { overscroll-behavior: none; }
 body { overflow: hidden !important; }
 
 .business-profile {
-  --bp-gradient: linear-gradient(112deg, var(--brand-blue, #1e22dc) 0%, #4935b8 43%, #cc5d4d 75%, var(--brand-orange, #ff6500) 100%);
-  --bp-bg: #f0f2f5;
-  --bp-surface: #fff;
-  --bp-line: #e9ecf1;
-  --bp-ink: #17283e;
-  --bp-muted: #6b7686;
-  --bp-accent: #1686ff;
   --bp-topbar: 56px;
-  --bp-cta-h: 76px;
+  --bp-row: clamp(40px, 6.2dvh, 54px);
+  --bp-avatar: clamp(58px, 11dvh, 96px);
+  --bp-tile: clamp(50px, 7.6dvh, 66px);
+  --bp-gap: clamp(6px, 1dvh, 10px);
 
   position: fixed !important;
   inset: 0 !important;
   z-index: 80 !important;
   overflow: hidden !important;
-  background: var(--bp-bg);
+  color: var(--text);
+  background: var(--profile-bg);
   transform: translateX(100%);
   transition: transform .24s cubic-bezier(.22,.61,.36,1);
 }
 .business-profile.is-open { transform: translateX(0); }
 
 .business-profile-shell {
-  position: relative;
   width: 100%; height: 100%; min-height: 0;
-  display: block !important;
+  display: flex !important; flex-direction: column;
   overflow: hidden !important;
-  background: var(--bp-bg) !important;
+  transform: none !important;
+  background: var(--profile-bg) !important;
 }
 
-/* ---------- Top bar: transparent over the cover, solid once scrolled ---------- */
+/* ---------- Top bar ---------- */
 .business-profile-topbar {
-  position: absolute !important;
-  z-index: 4;
-  top: 0; left: 0; right: 0;
+  position: relative !important;
+  flex: 0 0 auto;
   height: calc(var(--bp-topbar) + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) 6px 0 !important;
+  min-height: 0 !important;
+  padding: env(safe-area-inset-top) 10px 0 !important;
   display: grid !important;
-  grid-template-columns: 48px 1fr 48px;
+  grid-template-columns: 40px 1fr 40px;
   align-items: center;
-  color: #fff;
+  color: var(--text) !important;
+  background: var(--surface) !important;
   border: 0 !important;
-  background: transparent !important;
+  border-bottom: 1px solid var(--line) !important;
   box-shadow: none !important;
-  transition: background-color .18s ease, box-shadow .18s ease;
 }
-.business-profile-topbar::before {
-  content: "";
-  position: absolute; inset: 0; z-index: -1;
-  background: var(--bp-gradient);
-  opacity: 0;
-  transition: opacity .18s ease;
-}
-.business-profile.is-scrolled .business-profile-topbar::before { opacity: 1; }
-.business-profile.is-scrolled .business-profile-topbar { box-shadow: 0 1px 0 rgba(0,0,0,.08) !important; }
-
 .business-profile-topbar strong {
   justify-self: center;
   font-size: 16px; font-weight: 700; letter-spacing: -.01em;
-  opacity: 0; transform: translateY(4px);
-  transition: opacity .18s ease, transform .18s ease;
 }
-.business-profile.is-scrolled .business-profile-topbar strong { opacity: 1; transform: none; }
 .profile-topbar-spacer { display: block; }
-
 .profile-back {
-  width: 42px !important; height: 42px !important;
+  width: 36px !important; height: 36px !important;
   display: grid !important; place-items: center;
   border: 0 !important; border-radius: 50% !important;
-  color: #fff !important; background: transparent !important; box-shadow: none !important;
+  color: var(--text) !important;
+  background: var(--surface-2) !important;
+  box-shadow: none !important;
 }
-.profile-back:hover, .profile-back:focus-visible { background: rgba(255,255,255,.16) !important; }
-.profile-back svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2.2; fill: none; }
+.profile-back:hover, .profile-back:focus-visible { filter: brightness(.96); }
+.profile-back svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2.3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- Single native scroll ---------- */
+/* ---------- Body: no scroll, sections stacked ---------- */
 .business-profile-scroll {
-  height: 100%; min-height: 0;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  flex: 1 1 auto; min-height: 0;
+  overflow: hidden !important;
   display: flex !important; flex-direction: column;
   justify-content: flex-start !important; align-content: stretch !important;
-  gap: 8px !important;
-  padding: 0 0 calc(var(--bp-cta-h) + env(safe-area-inset-bottom) + 8px) !important;
-  background: var(--bp-bg);
-  scrollbar-width: thin;
+  gap: var(--bp-gap) !important;
+  padding: 0 !important;
+  background: var(--profile-bg) !important;
 }
 .business-profile-scroll > * {
   width: 100% !important; max-width: none !important; margin: 0 !important;
   grid-area: auto !important;
 }
 
-/* Full-bleed sections: no radius, no shadow, no side gutter */
 .profile-hero,
 .profile-info-card {
   flex: 0 0 auto;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  background: var(--bp-surface) !important;
-  overflow: visible !important;
+  background: var(--surface) !important;
+  overflow: hidden !important;
 }
 
 /* ---------- Hero ---------- */
 .profile-hero {
-  padding: 0 16px 18px !important;
+  padding: clamp(10px, 2dvh, 22px) 16px clamp(10px, 1.8dvh, 18px) !important;
   text-align: center;
 }
-.profile-cover {
-  position: relative;
-  height: calc(var(--bp-topbar) + env(safe-area-inset-top) + 58px) !important;
-  margin: 0 -16px !important;
-  overflow: hidden;
-  border-radius: 0 !important;
-  background: var(--bp-gradient) !important;
-}
-.profile-cover-logo {
-  position: absolute; right: -18px; bottom: -34px; left: auto !important; top: auto !important;
-  width: 150px !important; height: 150px !important;
-  opacity: .12; transform: rotate(-8deg);
-}
+.profile-cover { display: none !important; }
 .profile-avatar-large {
-  width: 96px !important; height: 96px !important;
-  margin: -50px auto 10px !important;
-  border: 4px solid #fff !important;
-  box-shadow: 0 4px 16px rgba(20,30,60,.16) !important;
+  width: var(--bp-avatar) !important; height: var(--bp-avatar) !important;
+  margin: 0 auto clamp(6px, 1.2dvh, 12px) !important;
+  border: 0 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 1px var(--line), 0 3px 12px rgba(0,0,0,.08) !important;
 }
-.profile-avatar-large img { width: 74px !important; height: 74px !important; }
+.profile-avatar-large img { width: 76% !important; height: 76% !important; }
 .profile-hero h2 {
   margin: 0 !important;
-  color: var(--bp-ink) !important;
-  font-size: 23px !important; line-height: 1.15 !important; letter-spacing: -.025em;
+  color: var(--text) !important;
+  font-size: clamp(19px, 2.8dvh, 24px) !important; line-height: 1.15 !important; letter-spacing: -.025em;
 }
 .profile-hero > p {
-  margin: 5px 0 0 !important;
-  color: var(--bp-muted) !important;
-  font-size: 14px !important; line-height: 1.3 !important;
+  margin: 3px 0 0 !important;
+  color: var(--text-2) !important;
+  font-size: 13.5px !important; line-height: 1.3 !important;
 }
-.institutional-badge--profile { width: 20px !important; height: 20px !important; vertical-align: 2px; }
+.institutional-badge--profile { width: 19px !important; height: 19px !important; vertical-align: 2px; }
 
-/* Actions live inside the hero section (moved there by JS) */
 .profile-actions {
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0,1fr));
   gap: 8px !important;
-  margin-top: 18px !important;
+  margin-top: clamp(10px, 1.8dvh, 18px) !important;
   padding: 0 !important;
   background: transparent !important;
 }
 .profile-action {
-  min-width: 0; min-height: 64px !important;
-  padding: 9px 4px !important; gap: 5px !important;
+  min-width: 0; min-height: var(--bp-tile) !important; height: var(--bp-tile);
+  padding: 4px !important; gap: 4px !important;
   display: flex !important; flex-direction: column; align-items: center; justify-content: center;
-  border: 1px solid var(--bp-line) !important;
-  border-radius: 12px !important;
-  background: var(--bp-surface) !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: var(--surface-2) !important;
   box-shadow: none !important;
-  color: var(--bp-ink) !important;
+  color: var(--text) !important;
   font-size: 12px !important; font-weight: 600 !important;
   text-decoration: none !important;
-  transition: background-color .15s ease, border-color .15s ease;
+  transition: filter .15s ease;
 }
-.profile-action:hover, .profile-action:focus-visible { background: #f6f8fc !important; border-color: #dfe4ec !important; }
-.profile-action:active { background: #eef1f7 !important; }
-.profile-action--booking { color: #d9530c !important; }
-.profile-action-icon { width: 26px !important; height: 26px !important; display: grid; place-items: center; color: var(--bp-accent); }
-.profile-action--booking .profile-action-icon { color: var(--brand-orange, #ff6500); }
+.profile-action:hover, .profile-action:focus-visible { filter: brightness(.97); }
+.profile-action:active { filter: brightness(.93); }
+.profile-action-icon { width: 24px !important; height: 24px !important; display: grid; place-items: center; color: var(--accent); }
+.profile-action--booking .profile-action-icon { color: var(--orange); }
 .profile-action-icon svg { width: 22px !important; height: 22px !important; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- Info / contact / social sections ---------- */
+/* ---------- Rows ---------- */
 .profile-info-row,
 .profile-contact-row,
 .profile-social-row {
   position: relative;
-  min-height: 56px !important;
-  padding: 11px 16px !important;
+  min-height: var(--bp-row) !important;
+  padding: 5px 16px !important;
   border: 0 !important;
   background: transparent !important;
 }
-/* Inset dividers, WhatsApp style */
 .profile-info-row:not(:last-child)::after,
-.profile-contact-row:not(:last-child)::after,
-.profile-social-row:not(:last-child)::after {
+.profile-contact-row:not(:last-child)::after {
   content: ""; position: absolute; bottom: 0; right: 0; left: 16px;
-  height: 1px; background: var(--bp-line);
+  height: 1px; background: var(--line);
 }
-.profile-contact-row:not(:last-child)::after,
-.profile-social-row:not(:last-child)::after { left: 62px; }
+.profile-contact-row:not(:last-child)::after { left: 58px; }
 
-.profile-info-row { display: grid; gap: 2px; align-content: center; }
+.profile-info-row { display: grid; gap: 1px; align-content: center; }
 .profile-info-row > strong,
 .profile-contact-row strong,
 .profile-social-row strong {
-  font-size: 15px !important; line-height: 1.3 !important; font-weight: 600 !important;
-  color: var(--bp-ink) !important;
+  font-size: 15px !important; line-height: 1.25 !important; font-weight: 500 !important;
+  color: var(--text) !important;
 }
 .profile-info-row > span:not(.profile-info-kicker),
 .profile-contact-row small,
 .profile-social-row small {
-  font-size: 13px !important; line-height: 1.3 !important; color: var(--bp-muted) !important;
+  font-size: 12.5px !important; line-height: 1.25 !important; color: var(--text-2) !important;
 }
-.profile-info-kicker {
-  font-size: 12px !important; font-weight: 600 !important;
-  letter-spacing: 0 !important; text-transform: none !important;
-  color: var(--bp-muted) !important;
-}
-.profile-hours > div { display: grid; gap: 2px; }
-.profile-hours strong { font-size: 15px !important; }
-.profile-hours small { font-size: 13px !important; color: var(--bp-muted) !important; }
-.profile-open-status { font-size: 13px !important; font-weight: 700 !important; color: #16a765 !important; }
-.profile-open-status.is-closed { color: #7b8493 !important; }
+.profile-info-kicker { display: none !important; }
 
+/* Category already shows in the hero subtitle */
+.profile-info-row:has(#business-category-text) { display: none !important; }
+
+/* Hours on one line: "Abierto ahora ....... 08:00 a 18:00" */
+.profile-hours {
+  grid-template-columns: minmax(0,1fr) auto;
+  column-gap: 12px;
+  align-items: center;
+}
+.profile-hours > div { display: contents !important; }
+.profile-open-status { grid-column: 1; font-size: 15px !important; font-weight: 500 !important; color: var(--online) !important; }
+.profile-open-status.is-closed { color: var(--text-2) !important; }
+.profile-hours strong { grid-column: 2; grid-row: 1; font-size: 15px !important; font-weight: 500 !important; color: var(--text) !important; }
+.profile-hours small { grid-column: 1 / -1; font-size: 12.5px !important; color: var(--text-2) !important; }
+
+/* Contact rows */
 .profile-contact-row,
 .profile-social-row {
   display: grid !important;
-  grid-template-columns: 30px minmax(0,1fr) 16px; align-items: center; gap: 16px !important;
+  grid-template-columns: 26px minmax(0,1fr) 14px; align-items: center; gap: 16px !important;
   text-decoration: none !important; color: inherit !important;
   transition: background-color .15s ease;
 }
 .profile-contact-row:hover, .profile-social-row:hover,
-.profile-contact-row:focus-visible, .profile-social-row:focus-visible { background: #f7f8fa !important; }
-.profile-contact-row:active, .profile-social-row:active { background: #eff1f4 !important; }
-.profile-contact-icon { width: 30px !important; height: 30px !important; display: grid; place-items: center; color: var(--bp-muted) !important; }
+.profile-contact-row:focus-visible, .profile-social-row:focus-visible { background: var(--hover) !important; }
+.profile-contact-icon { width: 26px !important; height: 26px !important; display: grid; place-items: center; color: var(--text-2) !important; }
 .profile-contact-icon svg { width: 22px !important; height: 22px !important; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .profile-contact-row > span:nth-child(2),
-.profile-social-row > span:nth-child(2) { min-width: 0; display: grid; gap: 1px; }
+.profile-social-row > span:nth-child(2) { min-width: 0; display: grid; gap: 0; }
 .profile-contact-row strong,
 .profile-social-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.profile-chevron { color: #a5adb9 !important; font-size: 22px !important; line-height: 1; text-align: center; }
+.profile-chevron { color: var(--text-3) !important; font-size: 20px !important; line-height: 1; text-align: center; }
+
+/* Website is already an action tile */
+#business-website-link { display: none !important; }
+.profile-contact-row:has(+ #business-website-link)::after { display: none; }
+
+/* Social links side by side */
+.profile-info-card:has(.profile-social-row) {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+}
+.profile-social-row { grid-template-columns: 26px minmax(0,1fr) !important; gap: 10px !important; padding-right: 10px !important; }
+.profile-social-row + .profile-social-row { border-left: 1px solid var(--line) !important; }
+.profile-social-row .profile-chevron { display: none; }
 .profile-social-mark {
-  width: 28px; height: 28px; display: grid; place-items: center;
-  border: 1.8px solid var(--bp-muted); border-radius: 50%;
-  color: var(--bp-muted); font-weight: 800; font-size: 14px;
+  width: 26px; height: 26px; display: grid; place-items: center;
+  border: 1.7px solid var(--text-2); border-radius: 50%;
+  color: var(--text-2); font-weight: 800; font-size: 13px;
 }
 
-.profile-disclaimer {
-  display: block !important;
-  flex: 0 0 auto;
-  padding: 6px 16px 4px !important;
-  text-align: center;
-  font-size: 12px !important;
-  color: #98a1ae !important;
-  background: transparent !important;
-}
+.profile-disclaimer { display: none !important; }
 
-/* ---------- Docked CTA ---------- */
+/* ---------- CTA docked at the bottom (part of the layout, not floating) ---------- */
 .profile-cta {
-  position: absolute; z-index: 3;
-  left: 0; right: 0; bottom: 0;
+  position: relative !important;
+  flex: 0 0 auto;
   display: flex;
-  padding: 10px 16px max(12px, env(safe-area-inset-bottom));
-  background: var(--bp-surface);
-  border-top: 1px solid var(--bp-line);
+  padding: 8px 16px max(10px, env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
 }
 .profile-cta button {
-  width: 100%; min-height: 50px; border: 0; border-radius: 14px;
-  background: var(--bp-gradient); color: #fff;
+  width: 100%; min-height: clamp(42px, 6dvh, 50px); border: 0; border-radius: 14px;
+  background: var(--brand-gradient); color: #fff;
   box-shadow: none;
   font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
 }
-.profile-cta button:hover { filter: brightness(1.05); }
+.profile-cta button:hover { filter: brightness(1.06); }
 .profile-cta button:active { transform: translateY(1px); }
 
-/* ---------- Tablet: full screen, content kept to a comfortable width ---------- */
-@media (min-width: 681px) and (max-width: 899px) {
-  .profile-hero, .profile-info-card, .profile-cta {
-    padding-left: max(16px, calc((100% - 640px) / 2)) !important;
-    padding-right: max(16px, calc((100% - 640px) / 2)) !important;
-  }
-  .profile-cover { margin: 0 calc(-1 * max(16px, calc((100% - 640px) / 2))) !important; }
+/* Very short screens: drop the least important bits */
+@media (max-height: 600px) {
+  .profile-info-row:has(#business-description-text) { display: none !important; }
+  .profile-hero > p { display: none; }
+}
+@media (max-height: 520px) {
+  .profile-info-card:has(.profile-social-row) { display: none !important; }
 }
 
-/* ---------- Desktop: side pane next to the chat (split view) ---------- */
+/* Tablet (full screen): keep content at a comfortable width */
+@media (min-width: 681px) and (max-width: 899px) {
+  .profile-hero, .profile-info-card, .profile-cta {
+    padding-left: max(16px, calc((100% - 600px) / 2)) !important;
+    padding-right: max(16px, calc((100% - 600px) / 2)) !important;
+  }
+}
+
+/* ---------- Desktop: same profile, as a side pane (split view) ---------- */
 @media (min-width: 900px) {
   .business-profile {
-    --bp-pane: clamp(360px, 34vw, 420px);
+    --bp-topbar: 72px;
     left: auto !important;
-    width: var(--bp-pane) !important;
-    border-left: 1px solid #dde1e8;
+    width: clamp(360px, 34vw, 420px) !important;
+    border-left: 1px solid var(--line);
     box-shadow: none !important;
   }
-  /* WhatsApp Web style: plain pane header aligned with the chat header,
-     so the brand gradient isn't restarted next to the chat's own one */
-  .business-profile { --bp-topbar: 72px; }
-  .business-profile-topbar {
-    position: relative !important;
-    height: var(--bp-topbar);
-    padding: 0 10px !important;
-    grid-template-columns: 44px 1fr 44px;
-    color: var(--bp-ink);
-    background: var(--bp-surface) !important;
-    border-bottom: 1px solid var(--bp-line) !important;
-  }
-  .business-profile-topbar::before { display: none; }
-  .business-profile-topbar strong { justify-self: start; opacity: 1; transform: none; font-size: 16px; }
-  .profile-back { color: var(--bp-muted) !important; }
-  .profile-back:hover, .profile-back:focus-visible { background: #f1f3f6 !important; }
-  .business-profile-scroll { height: calc(100% - var(--bp-topbar)); }
-  .profile-cover { display: none !important; }
-  .profile-hero { padding-top: 26px !important; }
-  .profile-avatar-large { margin: 0 auto 12px !important; width: 104px !important; height: 104px !important; }
-  .profile-avatar-large img { width: 80px !important; height: 80px !important; }
+  .business-profile-topbar { padding-top: 0 !important; }
 
-  /* Make room for the pane instead of covering the conversation */
   .chat-app:has(.business-profile.is-open) > .chat-header,
   .chat-app:has(.business-profile.is-open) > .messages,
   .chat-app:has(.business-profile.is-open) > .typing-indicator,
@@ -326,6 +289,5 @@ body { overflow: hidden !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .business-profile,
-  .business-profile-shell,
   .chat-app > * { transition: none !important; }
 }

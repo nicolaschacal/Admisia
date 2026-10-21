@@ -63,23 +63,11 @@
     if (hero && actions && actions.parentElement !== hero) hero.appendChild(actions);
   }
 
-  function bindScrollState() {
-    const scroller = profile.querySelector('.business-profile-scroll');
-    if (!scroller) return;
-    const update = () => profile.classList.toggle('is-scrolled', scroller.scrollTop > 48);
-    scroller.addEventListener('scroll', update, { passive: true });
-    new MutationObserver(() => {
-      if (profile.hidden) { scroller.scrollTop = 0; update(); }
-    }).observe(profile, { attributes: true, attributeFilter: ['hidden'] });
-    update();
-  }
-
   replaceShareWithLocation();
   addBookingAction();
   mergeActionsIntoHero();
   addFixedCta();
   polishHero();
-  bindScrollState();
 
   const sync = () => {
     const location = document.getElementById('business-location-action');
