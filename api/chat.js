@@ -1,26 +1,10 @@
 const { query } = require("../lib/db");
 const { retrieveKnowledge, formatKnowledgeContext } = require("../lib/knowledge");
-
-async function persistMessage(sessionId, role, content, leadId = null) {
-  if (!process.env.DATABASE_URL || !sessionId || !content) return;
-  try {
-    const session = await query(
-      `INSERT INTO conversation_sessions (session_key, lead_id, last_message_at)
-       VALUES ($1,$2,now())
-       ON CONFLICT (session_key)
-       DO UPDATE SET last_message_at=now(), lead_id=COALESCE(conversation_sessions.lead_id, EXCLUDED.lead_id)
-       RETURNING id`,
-      [String(sessionId).slice(0,200), leadId]
-    );
-    await query(
-      `INSERT INTO conversation_messages (conversation_id, role, content)
-       VALUES ($1,$2,$3)`,
-      [session.rows[0].id, role, String(content).slice(0,5000)]
-    );
-  } catch (error) {
-    console.error("No se pudo persistir el mensaje del chat:", error.message);
-  }
-}
+const {
+  loadVisitorMessages,
+  persistVisitorMessage,
+  getCurrentAppointment
+} = require("../lib/visitor-session");
 
 const SYSTEM_INSTRUCTION = `
 Sos el asistente virtual de admisiones del Colegio Nubarian.
@@ -416,7 +400,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { message, history = [], sessionId = null } = req.body || {};
+    const { message, history = [] } = req.body || {};
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: "El mensaje no puede estar vacío." });
@@ -426,8 +410,16 @@ module.exports = async (req, res) => {
       return res.status(400).json({ success: false, message: "La consulta es demasiado larga." });
     }
 
-    const safeHistory = Array.isArray(history)
-      ? history
+    const visitorState = await loadVisitorMessages(req, res, 12);
+    const serverHistory = visitorState.messages.map((item) => ({
+      role: item.role === "assistant" ? "model" : "user",
+      text: item.content
+    }));
+
+    const effectiveHistory = serverHistory.length ? serverHistory : history;
+
+    const safeHistory = Array.isArray(effectiveHistory)
+      ? effectiveHistory
           .filter((item) =>
             item &&
             (item.role === "user" || item.role === "model") &&
@@ -441,10 +433,11 @@ module.exports = async (req, res) => {
           }))
       : [];
 
-    const userPersistPromise = persistMessage(sessionId, "user", message.trim());
-    const knowledgePromise = retrieveKnowledge(message, history, 6);
+    const userPersistPromise = persistVisitorMessage(req, res, "user", message.trim());
+    const knowledgePromise = retrieveKnowledge(message, effectiveHistory, 6);
+    const appointmentPromise = getCurrentAppointment(visitorState.session.lead_id);
 
-    const instantAnswer = getInstantAnswer(message, history);
+    const instantAnswer = getInstantAnswer(message, effectiveHistory);
 
     const apiKey = process.env.GEMINI_API_KEY;
 
@@ -466,12 +459,27 @@ module.exports = async (req, res) => {
     let responseText;
 
     try {
-      const knowledgeItems = await knowledgePromise;
+      const [knowledgeItems, currentAppointment] = await Promise.all([
+        knowledgePromise,
+        appointmentPromise
+      ]);
       const knowledgeContext = formatKnowledgeContext(knowledgeItems);
+      let appointmentContext = "No hay una visita activa vinculada a este navegador.";
+
+      if (currentAppointment) {
+        appointmentContext =
+          `La familia tiene una visita activa para ${new Date(currentAppointment.start_at).toISOString()}. ` +
+          `Estado: ${currentAppointment.status}. Estudiante: ${currentAppointment.student_name || "sin nombre asociado"}. ` +
+          "Si pregunta por cambiar o cancelar, explicá que puede hacerlo directamente en este chat.";
+      }
+
       const systemInstruction = `${SYSTEM_INSTRUCTION}
 
 BASE DE CONOCIMIENTO RELEVANTE PARA ESTA CONSULTA
-${knowledgeContext}`;
+${knowledgeContext}
+
+SITUACIÓN ACTUAL DE LA FAMILIA
+${appointmentContext}`;
 
       responseText = await askGeminiWithFallback({
         apiKey,
@@ -484,7 +492,7 @@ ${knowledgeContext}`;
       if (instantAnswer) {
         await Promise.allSettled([
           userPersistPromise,
-          persistMessage(sessionId, "assistant", instantAnswer)
+          persistVisitorMessage(req, res, "assistant", instantAnswer)
         ]);
 
         return res.status(200).json({
@@ -505,7 +513,7 @@ ${knowledgeContext}`;
 
     await Promise.allSettled([
       userPersistPromise,
-      persistMessage(sessionId, "assistant", responseText)
+      persistVisitorMessage(req, res, "assistant", responseText)
     ]);
 
     return res.status(200).json({

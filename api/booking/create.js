@@ -3,6 +3,10 @@ const { validateSlot, ZONE } = require("../../lib/scheduling");
 const { queueAndTrySend } = require("../../lib/email");
 const { DateTime } = require("luxon");
 const { createCalendarEvent } = require("../../lib/google-calendar");
+const {
+  linkVisitorToLead,
+  persistVisitorMessage
+} = require("../../lib/visitor-session");
 
 function clean(value, max = 500) {
   return String(value || "").trim().slice(0, max);
@@ -35,7 +39,6 @@ module.exports = async (req, res) => {
       birthDate,
       previousInstitution,
       comments,
-      sessionId,
       privacyConsent,
       utmSource,
       utmMedium,
@@ -164,14 +167,7 @@ module.exports = async (req, res) => {
       );
       const appointment = appointmentResult.rows[0];
 
-      if (clean(sessionId, 200)) {
-        await client.query(
-          `UPDATE conversation_sessions
-           SET lead_id=$1, last_message_at=now()
-           WHERE session_key=$2`,
-          [lead.id, clean(sessionId, 200)]
-        );
-      }
+      await linkVisitorToLead(req, res, lead.id, client);
 
       await client.query(
         `INSERT INTO activities (lead_id,type,description,metadata)
@@ -257,12 +253,25 @@ module.exports = async (req, res) => {
       bodyText: familyBody
     });
 
+    const display = localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm");
+
+    await persistVisitorMessage(
+      req,
+      res,
+      "assistant",
+      `Visita confirmada para el ${display}. Si necesitás cambiarla o cancelarla, podés hacerlo desde este mismo chat.`,
+      created.lead.id
+    );
+
     return res.status(201).json({
       success: true,
       appointment: {
         id: created.appointment.id,
         startAt: created.appointment.start_at,
-        display: localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")
+        endAt: created.appointment.end_at,
+        status: created.appointment.status,
+        studentName: created.student.full_name,
+        display
       }
     });
   } catch (error) {
