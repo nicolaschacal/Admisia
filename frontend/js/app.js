@@ -14,6 +14,8 @@ const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   : "/api/chat";
 
 const PENDING_ACTION_KEY = "nubarian_chat_pending_action";
+const LEGACY_SESSION_KEY = "nubarian_chat_session_id";
+const LEGACY_HISTORY_KEY = "nubarian_chat_session_history";
 let conversationHistory = [];
 let pendingAction = sessionStorage.getItem(PENDING_ACTION_KEY);
 let currentAppointment = null;
@@ -324,7 +326,12 @@ async function bootstrapConversation() {
   setLoading(true);
 
   try {
-    const response = await fetch("/api/chat/session", {
+    const legacySessionId = sessionStorage.getItem(LEGACY_SESSION_KEY);
+    const sessionUrl = legacySessionId
+      ? `/api/chat/session?legacySessionId=${encodeURIComponent(legacySessionId)}`
+      : "/api/chat/session";
+
+    const response = await fetch(sessionUrl, {
       method: "GET",
       credentials: "same-origin",
       cache: "no-store"
@@ -334,6 +341,11 @@ async function bootstrapConversation() {
     if (response.ok && data.success) {
       restoreConversation(data.messages || []);
       currentAppointment = data.appointment || null;
+
+      if (legacySessionId) {
+        sessionStorage.removeItem(LEGACY_SESSION_KEY);
+        sessionStorage.removeItem(LEGACY_HISTORY_KEY);
+      }
 
       if (currentAppointment) showAppointmentCard(currentAppointment);
 

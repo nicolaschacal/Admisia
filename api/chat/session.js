@@ -2,6 +2,7 @@ const { DateTime } = require("luxon");
 const { ZONE } = require("../../lib/scheduling");
 const {
   loadVisitorMessages,
+  migrateLegacySession,
   getCurrentAppointment
 } = require("../../lib/visitor-session");
 
@@ -27,7 +28,14 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { session, messages } = await loadVisitorMessages(req, res, 250);
+    res.setHeader("Cache-Control", "private, no-store, max-age=0");
+
+    const legacySessionId = String(req.query?.legacySessionId || "").slice(0, 200);
+    const migratedSession = legacySessionId
+      ? await migrateLegacySession(req, res, legacySessionId)
+      : null;
+
+    const { session, messages } = await loadVisitorMessages(req, res, 250, migratedSession);
     const appointment = await getCurrentAppointment(session.lead_id);
 
     return res.status(200).json({
