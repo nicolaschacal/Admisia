@@ -83,6 +83,7 @@ body { overflow: hidden !important; }
 .profile-hero,
 .profile-info-card {
   flex: 0 0 auto;
+  display: flex !important; flex-direction: column;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -144,10 +145,13 @@ body { overflow: hidden !important; }
 .profile-action-icon svg { width: 22px !important; height: 22px !important; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- Rows ---------- */
+.profile-info-card { flex: 1 1 auto !important; }
 .profile-info-row,
 .profile-contact-row,
 .profile-social-row {
   position: relative;
+  flex: 1 1 auto;
+  max-height: 72px;
   min-height: var(--bp-row) !important;
   padding: 5px 16px !important;
   border: 0 !important;
@@ -211,16 +215,13 @@ body { overflow: hidden !important; }
 #business-website-link { display: none !important; }
 .profile-contact-row:has(+ #business-website-link)::after { display: none; }
 
-/* Social links side by side */
-.profile-info-card:has(.profile-social-row) {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr;
+/* Social links: one per row, like the contact rows */
+.profile-social-row:not(:last-child)::after {
+  content: ""; position: absolute; bottom: 0; right: 0; left: 58px;
+  height: 1px; background: var(--line);
 }
-.profile-social-row { grid-template-columns: 26px minmax(0,1fr) !important; gap: 10px !important; padding-right: 10px !important; }
-.profile-social-row + .profile-social-row { border-left: 1px solid var(--line) !important; }
-.profile-social-row .profile-chevron { display: none; }
 .profile-social-mark {
-  width: 26px; height: 26px; display: grid; place-items: center;
+  width: 24px; height: 24px; margin: 0 1px; display: grid; place-items: center;
   border: 1.7px solid var(--text-2); border-radius: 50%;
   color: var(--text-2); font-weight: 800; font-size: 13px;
 }
@@ -250,7 +251,7 @@ body { overflow: hidden !important; }
   .profile-info-row:has(#business-description-text) { display: none !important; }
   .profile-hero > p { display: none; }
 }
-@media (max-height: 520px) {
+@media (max-height: 560px) {
   .profile-info-card:has(.profile-social-row) { display: none !important; }
 }
 

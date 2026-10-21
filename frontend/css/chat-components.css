@@ -1,0 +1,269 @@
+/* Interactive chat components: slot picker, booking form, appointment card.
+   Uses the tokens from messenger-theme.css so they work in light and dark. */
+
+/* Cards live inside an assistant bubble */
+.custom-card { width: min(360px, 88%) !important; max-width: 360px !important; }
+.custom-card > .message { width: 100%; padding: 10px 10px 8px !important; }
+
+.ui-icon {
+  width: 18px; height: 18px; flex: 0 0 auto;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ---------- Buttons ---------- */
+.chat-btn {
+  min-height: 42px;
+  padding: 0 14px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit; font-size: 14px; font-weight: 650;
+  cursor: pointer;
+  transition: filter .15s ease, transform .1s ease, background-color .15s ease;
+}
+.chat-btn:active { transform: scale(.98); }
+.chat-btn:disabled { opacity: .55; cursor: default; transform: none; }
+.chat-btn--primary { color: #fff !important; background: var(--brand-gradient) !important; border: 0 !important; }
+.chat-btn--primary:hover { filter: brightness(1.06); }
+.chat-btn--secondary { color: var(--accent) !important; background: var(--accent-soft) !important; border: 0 !important; }
+.chat-btn--secondary:hover { filter: brightness(.97); }
+.chat-btn--danger { color: var(--danger) !important; background: var(--danger-soft) !important; border: 0 !important; }
+.chat-btn--danger-solid { color: #fff !important; background: #d6452f !important; border: 0 !important; }
+.chat-btn span { white-space: nowrap; }
+
+/* ---------- Slot picker ---------- */
+.slot-picker { display: grid; gap: 10px; }
+
+.slot-picker-head { display: flex; align-items: center; gap: 10px; }
+.slot-picker-icon,
+.booking-summary-icon,
+.appt-head-icon {
+  width: 36px; height: 36px; flex: 0 0 36px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.slot-picker-head > span:last-child,
+.booking-summary > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.slot-picker-head strong { font-size: 15px; font-weight: 700; color: var(--text); }
+.slot-picker-head small { font-size: 12.5px; color: var(--text-2); }
+
+.slot-chips {
+  display: flex; gap: 6px;
+  margin: 0 -10px; padding: 2px 10px 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 10px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.slot-chips::-webkit-scrollbar { display: none; }
+.slot-chip {
+  flex: 0 0 auto;
+  width: 58px; min-height: 68px;
+  display: grid; place-items: center; align-content: center; gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--field-bg);
+  scroll-snap-align: start;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.slot-chip:hover { border-color: var(--chip-border-hover); }
+.slot-chip-dow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-2); }
+.slot-chip-num { font-size: 21px; font-weight: 750; line-height: 1.05; }
+.slot-chip-mon { font-size: 11px; color: var(--text-2); }
+.slot-chip.is-active {
+  color: #fff;
+  border-color: transparent;
+  background: var(--brand-blue);
+  box-shadow: 0 4px 12px rgba(21,27,232,.25);
+}
+.slot-chip.is-active .slot-chip-dow,
+.slot-chip.is-active .slot-chip-mon { color: rgba(255,255,255,.8); }
+
+.slot-day-label {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-size: 13.5px; font-weight: 650; color: var(--text);
+}
+.slot-day-label span { font-size: 12px; font-weight: 500; color: var(--text-2); }
+
+.slot-times {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.slot-time {
+  min-height: 42px;
+  border: 1px solid var(--chip-border);
+  border-radius: 11px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font: inherit; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, transform .1s ease;
+}
+.slot-time:hover { border-color: var(--chip-border-hover); }
+.slot-time:active { transform: scale(.97); }
+.slot-time.is-selected { color: #fff; background: var(--brand-blue); border-color: transparent; }
+.slot-picker.is-done .slot-chip:not(.is-active),
+.slot-picker.is-done .slot-time:not(.is-selected) { opacity: .45; }
+.slot-picker button:disabled { cursor: default; }
+
+/* ---------- Booking form ---------- */
+.booking-form-card { display: grid; gap: 10px; }
+.booking-summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--field-bg);
+}
+.booking-summary small { font-size: 12px; color: var(--text-2); }
+.booking-summary strong { font-size: 14.5px; font-weight: 700; color: var(--text); }
+
+.booking-form { display: grid !important; grid-template-columns: minmax(0,1fr) !important; gap: 9px !important; }
+.booking-form > * { grid-column: 1 / -1 !important; }
+.booking-step { margin: 2px 0 0; font-size: 13px; font-weight: 650; color: var(--text-2); }
+
+.booking-form .field { display: grid !important; gap: 4px !important; min-width: 0; color: var(--text) !important; }
+.booking-form .field > span {
+  font-size: 12px !important; font-weight: 600 !important; color: var(--text-2) !important;
+}
+.field-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+.field-row > .field { grid-column: auto !important; }
+.field-row--stack { grid-template-columns: minmax(0,1fr); }
+
+.booking-form input:not([type="checkbox"]),
+.booking-form textarea {
+  width: 100%; min-width: 0;
+  min-height: 42px !important;
+  padding: 9px 11px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
+  color: var(--text) !important;
+  background: var(--field-bg) !important;
+  font: inherit !important; font-size: 16px !important;
+  outline: none;
+  box-shadow: none !important;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.booking-form textarea { min-height: 64px !important; resize: vertical; }
+.booking-form input::placeholder,
+.booking-form textarea::placeholder { color: var(--text-3); }
+.booking-form input:focus,
+.booking-form textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft) !important;
+}
+.booking-form input[type="date"] { min-height: 42px !important; }
+.booking-form input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+
+.booking-more {
+  border-radius: 10px;
+}
+.booking-more summary {
+  list-style: none;
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0;
+  color: var(--accent);
+  font-size: 13.5px; font-weight: 650;
+  cursor: pointer;
+}
+.booking-more summary::-webkit-details-marker { display: none; }
+.booking-more summary::before { content: "+"; font-size: 17px; line-height: 1; }
+.booking-more[open] summary::before { content: "−"; }
+.booking-more summary span { color: var(--text-2); font-weight: 500; }
+.booking-more[open] { display: grid; gap: 9px; }
+
+.booking-form .consent-row {
+  display: grid !important;
+  grid-template-columns: 20px 1fr !important;
+  align-items: start;
+  gap: 9px !important;
+  font-size: 12.5px !important; font-weight: 400 !important;
+  line-height: 1.4;
+  color: var(--text-2) !important;
+}
+.booking-form .consent-row input {
+  width: 20px; height: 20px; margin: 0 !important;
+  accent-color: var(--brand-blue);
+}
+.booking-submit { width: 100%; min-height: 48px; font-size: 15px; }
+.booking-note { text-align: center; font-size: 12px; color: var(--text-2); }
+
+.booking-error {
+  padding: 9px 11px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  color: var(--danger) !important;
+  background: var(--danger-soft) !important;
+  font-size: 13px !important;
+}
+
+.booking-success { display: flex !important; align-items: center; gap: 10px; }
+.booking-success-icon {
+  width: 36px; height: 36px; flex: 0 0 36px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  color: #fff; background: var(--online);
+}
+.booking-success > span:last-child { display: grid; gap: 1px; }
+.booking-success strong { font-size: 15px; color: var(--text) !important; }
+.booking-success small { font-size: 13px; color: var(--text-2) !important; }
+
+/* ---------- Appointment card ---------- */
+.appointment-card { display: grid !important; gap: 10px !important; }
+.appt-head { display: flex; align-items: center; gap: 10px; }
+.appt-head-icon { color: var(--online); background: color-mix(in srgb, var(--online) 14%, transparent); }
+.appt-head-copy { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 8px; }
+.appointment-card .appt-head small {
+  color: var(--text-2) !important;
+  font-size: 12px !important; font-weight: 700 !important;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.appt-status {
+  padding: 3px 8px; border-radius: 999px;
+  color: var(--online); background: color-mix(in srgb, var(--online) 14%, transparent);
+  font-size: 11.5px; font-weight: 700;
+}
+
+.appt-when {
+  display: grid; gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--field-bg);
+}
+.appointment-card .appt-when strong { font-size: 18px !important; font-weight: 750; letter-spacing: -.01em; color: var(--text) !important; }
+.appt-time { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 650; color: var(--accent); }
+.appt-time .ui-icon { width: 16px; height: 16px; }
+
+.appt-details { display: grid; }
+.appt-detail {
+  display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 10px;
+  min-height: 36px;
+  color: var(--text) !important;
+  font-size: 14px !important;
+  text-decoration: none;
+}
+.appt-detail .ui-icon { color: var(--text-2); }
+.appt-detail + .appt-detail { border-top: 1px solid var(--line); }
+a.appt-detail:hover span { text-decoration: underline; }
+.appt-chevron { width: 16px !important; height: 16px !important; color: var(--text-3) !important; }
+
+.appointment-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+.appointment-actions .chat-btn { width: 100%; min-height: 42px !important; padding: 0 10px !important; font-size: 14px !important; border: 0 !important; }
+.appointment-actions .chat-btn .ui-icon { width: 16px; height: 16px; }
+
+/* ---------- Cancel confirmation ---------- */
+.cancel-confirmation { display: grid !important; gap: 10px !important; }
+.cancel-confirmation .appointment-actions { grid-template-columns: 1fr 1fr; }
+.cancel-confirmation p { color: var(--text) !important; font-size: 14.5px !important; line-height: 1.4 !important; }

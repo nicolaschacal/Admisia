@@ -318,40 +318,77 @@ function removeAppointmentCard() {
   ensureConversationRoot().querySelectorAll(".appointment-card-row").forEach((node) => node.remove());
 }
 
+const UI_ICONS = {
+  calendar: '<path d="M7 3v3M17 3v3M3.5 9.5h17M5 5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 5 5Z"/>',
+  calendarCheck: '<path d="M7 3v3M17 3v3M3.5 9.5h17M5 5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 5 5Z"/><path d="m9 14.5 2 2 4-4"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  pin: '<path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  swap: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  chevron: '<path d="m9 6 6 6-6 6"/>'
+};
+
+function uiIcon(name, className = "ui-icon") {
+  return `<svg class="${className}" viewBox="0 0 24 24" aria-hidden="true">${UI_ICONS[name] || ""}</svg>`;
+}
+
+function capitalize(value = "") {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+}
+
+function splitAppointmentDisplay(display = "") {
+  const [datePart, timePart] = String(display).split(/\s+a\s+las\s+/i);
+  return { date: capitalize((datePart || display).trim()), time: (timePart || "").trim() };
+}
+
 function showAppointmentCard(appointment = currentAppointment) {
   if (!appointment) return;
   removeAppointmentCard();
 
+  const { date, time } = splitAppointmentDisplay(appointment.display || appointment.shortDisplay || "Visita agendada");
+  const mapHref = document.getElementById("business-map-link")?.href
+    || "https://www.google.com/maps/search/?api=1&query=Av.%20Agraciada%202850%20Montevideo";
+  const address = [document.getElementById("business-address-1")?.textContent, "Montevideo"].filter(Boolean).join(", ") || "Agraciada 2850, Montevideo";
+
   const wrap = document.createElement("div");
   wrap.className = "appointment-card";
+  wrap.innerHTML = `
+    <div class="appt-head">
+      <span class="appt-head-icon">${uiIcon("calendarCheck")}</span>
+      <span class="appt-head-copy"><small>Tu próxima visita</small><span class="appt-status">Confirmada</span></span>
+    </div>
+    <div class="appt-when">
+      <strong>${escapeHtml(date)}</strong>
+      ${time ? `<span class="appt-time">${uiIcon("clock")}${escapeHtml(time)} hs</span>` : ""}
+    </div>
+    <div class="appt-details">
+      <a class="appt-detail" href="${escapeHtml(mapHref)}" target="_blank" rel="noreferrer">${uiIcon("pin")}<span>${escapeHtml(address)}</span>${uiIcon("chevron", "ui-icon appt-chevron")}</a>
+      ${appointment.studentName ? `<span class="appt-detail">${uiIcon("user")}<span>${escapeHtml(appointment.studentName)}</span></span>` : ""}
+    </div>
+    <div class="appointment-actions"></div>
+  `;
 
-  const eyebrow = document.createElement("small");
-  eyebrow.textContent = "Tu próxima visita";
-
-  const title = document.createElement("strong");
-  title.textContent = appointment.display || appointment.shortDisplay || "Visita agendada";
-
-  const subtitle = document.createElement("span");
-  subtitle.textContent = appointment.studentName
-    ? `${appointment.studentName} · Agraciada 2850`
-    : "Colegio Nubarian · Agraciada 2850";
-
-  const actions = document.createElement("div");
-  actions.className = "appointment-actions";
+  const actions = wrap.querySelector(".appointment-actions");
 
   const change = document.createElement("button");
   change.type = "button";
-  change.textContent = "Cambiar horario";
+  change.className = "chat-btn chat-btn--secondary";
+  change.innerHTML = `${uiIcon("swap")}<span>Cambiar horario</span>`;
   change.addEventListener("click", () => startReschedule({ echoUser: true }));
 
   const cancel = document.createElement("button");
   cancel.type = "button";
-  cancel.className = "danger-link";
-  cancel.textContent = "Cancelar";
+  cancel.className = "chat-btn chat-btn--danger";
+  cancel.innerHTML = `${uiIcon("x")}<span>Cancelar</span>`;
   cancel.addEventListener("click", () => showCancelConfirmation({ echoUser: true }));
 
   actions.append(change, cancel);
-  wrap.append(eyebrow, title, subtitle, actions);
   addCustomAssistantCard(wrap, "appointment-card-row");
 }
 
@@ -602,35 +639,78 @@ async function getAvailability() {
   return data.availability || [];
 }
 
+function describeDay(day) {
+  const date = day.date ? new Date(`${day.date}T12:00:00`) : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    const parts = String(day.label || "").split(" ");
+    return { dow: (parts[0] || "").slice(0, 3), num: parts[1] || "", mon: (parts[3] || "").slice(0, 3), full: capitalize(day.label || "") };
+  }
+  const fmt = (options) => new Intl.DateTimeFormat("es-UY", options).format(date).replace(".", "");
+  return { dow: fmt({ weekday: "short" }), num: String(date.getDate()), mon: fmt({ month: "short" }), full: capitalize(day.label || fmt({ weekday: "long", day: "numeric", month: "long" })) };
+}
+
 function renderSlots(availability, onSelect) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "slot-groups";
+  const days = availability.filter((day) => day?.slots?.length);
+  const picker = document.createElement("div");
+  picker.className = "slot-picker";
+  picker.innerHTML = `
+    <div class="slot-picker-head">
+      <span class="slot-picker-icon">${uiIcon("calendar")}</span>
+      <span><strong>Elegí día y horario</strong><small>Tocá un día y después la hora que prefieras</small></span>
+    </div>
+    <div class="slot-chips" role="tablist" aria-label="Días disponibles"></div>
+    <div class="slot-day-label"></div>
+    <div class="slot-times" role="group"></div>
+  `;
 
-  availability.forEach((day) => {
-    const group = document.createElement("div");
-    group.className = "slot-day";
+  const chips = picker.querySelector(".slot-chips");
+  const dayLabel = picker.querySelector(".slot-day-label");
+  const times = picker.querySelector(".slot-times");
 
-    const title = document.createElement("strong");
-    title.textContent = day.label;
-    group.appendChild(title);
-
-    const slots = document.createElement("div");
-    slots.className = "slot-list";
+  function selectDay(index) {
+    const day = days[index];
+    const info = describeDay(day);
+    chips.querySelectorAll(".slot-chip").forEach((chip, i) => {
+      chip.classList.toggle("is-active", i === index);
+      chip.setAttribute("aria-selected", String(i === index));
+    });
+    dayLabel.innerHTML = `${escapeHtml(info.full)} <span>${day.slots.length} ${day.slots.length === 1 ? "horario" : "horarios"}</span>`;
+    times.setAttribute("aria-label", `Horarios del ${info.full}`);
+    times.innerHTML = "";
 
     day.slots.forEach((slot) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "slot-button";
+      button.className = "slot-time";
       button.textContent = slot.label;
-      button.addEventListener("click", () => onSelect(slot, day));
-      slots.appendChild(button);
+      button.addEventListener("click", () => {
+        if (picker.classList.contains("is-done")) return;
+        picker.classList.add("is-done");
+        button.classList.add("is-selected");
+        picker.querySelectorAll("button").forEach((node) => { node.disabled = true; });
+        onSelect(slot, day);
+      });
+      times.appendChild(button);
     });
+  }
 
-    group.appendChild(slots);
-    wrapper.appendChild(group);
+  days.forEach((day, index) => {
+    const info = describeDay(day);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "slot-chip";
+    chip.setAttribute("role", "tab");
+    chip.innerHTML = `<span class="slot-chip-dow">${escapeHtml(info.dow)}</span><span class="slot-chip-num">${escapeHtml(info.num)}</span><span class="slot-chip-mon">${escapeHtml(info.mon)}</span>`;
+    chip.addEventListener("click", () => {
+      if (picker.classList.contains("is-done")) return;
+      selectDay(index);
+      chip.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+    chips.appendChild(chip);
   });
 
-  return wrapper;
+  if (days.length) selectDay(0);
+  return picker;
 }
 
 async function startBooking({ userMessage = "Quiero agendar una visita.", echoUser = true } = {}) {
@@ -677,40 +757,60 @@ function showBookingForm(startAt, label) {
   const container = document.createElement("div");
   container.className = "booking-form-card";
 
-  const heading = document.createElement("div");
-  heading.className = "booking-heading";
-  heading.innerHTML = `<strong>Perfecto. Para reservar ${label}, completá estos datos:</strong>`;
-  container.appendChild(heading);
+  const summary = document.createElement("div");
+  summary.className = "booking-summary";
+  summary.innerHTML = `
+    <span class="booking-summary-icon">${uiIcon("calendar")}</span>
+    <span><small>Reservando tu visita</small><strong>${escapeHtml(capitalize(label))}</strong></span>
+  `;
+  container.appendChild(summary);
 
   const form = document.createElement("form");
   form.className = "booking-form";
+  form.noValidate = false;
   form.innerHTML = `
-    <label>Nombre y apellido
-      <input name="adultName" autocomplete="name" required maxlength="200">
+    <p class="booking-step">Completá tus datos para confirmar</p>
+    <label class="field">
+      <span>Nombre y apellido</span>
+      <input name="adultName" autocomplete="name" required maxlength="200" placeholder="Ej. María Pérez">
     </label>
-    <label>Correo
-      <input name="email" type="email" autocomplete="email" required maxlength="200">
-    </label>
-    <label>Teléfono
-      <input name="phone" type="tel" autocomplete="tel" required maxlength="80">
-    </label>
-    <label>Nombre del estudiante
-      <input name="studentName" required maxlength="200">
-    </label>
-    <label>Fecha de nacimiento
-      <input name="birthDate" type="date" required>
-    </label>
-    <label>Institución de la que proviene <span>(si aplica)</span>
-      <input name="previousInstitution" maxlength="250">
-    </label>
-    <label>Comentarios adicionales
-      <textarea name="comments" rows="3" maxlength="1500"></textarea>
-    </label>
+    <div class="field-row field-row--stack">
+      <label class="field">
+        <span>Correo</span>
+        <input name="email" type="email" inputmode="email" autocomplete="email" required maxlength="200" placeholder="tu@correo.com">
+      </label>
+      <label class="field">
+        <span>Teléfono</span>
+        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="80" placeholder="09X XXX XXX">
+      </label>
+    </div>
+    <div class="field-row">
+      <label class="field">
+        <span>Nombre del estudiante</span>
+        <input name="studentName" required maxlength="200" placeholder="Nombre">
+      </label>
+      <label class="field">
+        <span>Fecha de nacimiento</span>
+        <input name="birthDate" type="date" required>
+      </label>
+    </div>
+    <details class="booking-more">
+      <summary>Agregar más información <span>(opcional)</span></summary>
+      <label class="field">
+        <span>Institución de la que proviene</span>
+        <input name="previousInstitution" maxlength="250" placeholder="Si aplica">
+      </label>
+      <label class="field">
+        <span>Comentarios</span>
+        <textarea name="comments" rows="2" maxlength="1500" placeholder="Algo que quieras contarnos"></textarea>
+      </label>
+    </details>
     <label class="consent-row">
       <input name="privacyConsent" type="checkbox" value="true" required>
-      <span>Autorizo el uso de estos datos exclusivamente para gestionar el proceso de admisión y contacto del Colegio Nubarian.</span>
+      <span>Autorizo el uso de estos datos solo para gestionar la admisión y el contacto del colegio.</span>
     </label>
-    <button type="submit">Confirmar visita</button>
+    <button type="submit" class="chat-btn chat-btn--primary booking-submit">${uiIcon("check")}<span>Confirmar visita</span></button>
+    <small class="booking-note">Sin costo · Podés cambiarla o cancelarla desde este chat</small>
   `;
 
   form.addEventListener("submit", async (event) => {
@@ -718,7 +818,7 @@ function showBookingForm(startAt, label) {
 
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = true;
-    submit.textContent = "Confirmando…";
+    submit.querySelector("span").textContent = "Confirmando…";
     setTyping(true, "confirmando visita…");
 
     const payload = Object.fromEntries(new FormData(form).entries());
@@ -742,10 +842,8 @@ function showBookingForm(startAt, label) {
       currentAppointment = data.appointment;
       container.innerHTML = `
         <div class="booking-success">
-          <strong>✓ Visita confirmada</strong>
-          <p>${data.appointment.display}</p>
-          <p>Agraciada 2850, Montevideo.</p>
-          <small>Podés cambiarla o cancelarla desde este mismo chat.</small>
+          <span class="booking-success-icon">${uiIcon("check")}</span>
+          <span><strong>Visita confirmada</strong><small>${escapeHtml(capitalize(data.appointment.display || ""))}</small></span>
         </div>
       `;
 
@@ -754,7 +852,7 @@ function showBookingForm(startAt, label) {
     } catch (error) {
       setTyping(false);
       submit.disabled = false;
-      submit.textContent = "Confirmar visita";
+      submit.querySelector("span").textContent = "Confirmar visita";
       const errorBox = form.querySelector(".booking-error") || document.createElement("div");
       errorBox.className = "booking-error";
       errorBox.textContent = error.message;
@@ -838,11 +936,12 @@ function showCancelConfirmation({ echoUser = false } = {}) {
 
   const confirm = document.createElement("button");
   confirm.type = "button";
-  confirm.className = "danger-button";
+  confirm.className = "chat-btn chat-btn--danger-solid";
   confirm.textContent = "Sí, cancelar";
 
   const keep = document.createElement("button");
   keep.type = "button";
+  keep.className = "chat-btn chat-btn--secondary";
   keep.textContent = "Mantener visita";
 
   confirm.addEventListener("click", cancelAppointment);
@@ -988,16 +1087,34 @@ function syncVisualViewport() {
   document.documentElement.style.setProperty("--visual-top", `${Math.round(top)}px`);
 }
 
+let viewportTrackUntil = 0;
+let viewportTrackFrame = 0;
+
+function trackViewport(duration = 700) {
+  viewportTrackUntil = Math.max(viewportTrackUntil, performance.now() + duration);
+  if (viewportTrackFrame) return;
+  const step = () => {
+    syncVisualViewport();
+    // Keep the layout pinned: the header never scrolls away, only the
+    // conversation area shrinks and stays anchored to the latest message.
+    if (window.scrollY !== 0) window.scrollTo(0, 0);
+    if (performance.now() < viewportTrackUntil) {
+      viewportTrackFrame = requestAnimationFrame(step);
+    } else {
+      viewportTrackFrame = 0;
+    }
+  };
+  viewportTrackFrame = requestAnimationFrame(step);
+}
+
 function settleKeyboardViewport() {
   if (!usesSoftwareKeyboardViewport) return;
 
-  syncVisualViewport();
-  [40, 120, 240, 360].forEach((delay) => {
-    setTimeout(() => {
-      syncVisualViewport();
-      scrollToBottom("auto");
-    }, delay);
-  });
+  const nearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 120;
+  trackViewport(800);
+  if (nearBottom || document.body.classList.contains("keyboard-open")) {
+    [60, 180, 360, 620].forEach((delay) => setTimeout(() => scrollToBottom("auto"), delay));
+  }
 }
 
 let keepComposerFocused = false;
@@ -1080,7 +1197,15 @@ messageInput.addEventListener("blur", () => {
 
 if (usesSoftwareKeyboardViewport) {
   window.visualViewport?.addEventListener("resize", settleKeyboardViewport);
-  window.visualViewport?.addEventListener("scroll", syncVisualViewport);
+  window.visualViewport?.addEventListener("scroll", () => trackViewport(300));
+
+  // iOS lets the user drag the whole page while the keyboard is open, which
+  // moves the header out of view. Only real scroll areas may scroll.
+  document.addEventListener("touchmove", (event) => {
+    if (!document.body.classList.contains("keyboard-open")) return;
+    const scroller = event.target.closest?.(".messages, .slot-chips, .chat-form textarea");
+    if (!scroller) event.preventDefault();
+  }, { passive: false });
   window.addEventListener("resize", syncVisualViewport);
   window.addEventListener("orientationchange", settleKeyboardViewport);
 }
