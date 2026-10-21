@@ -440,6 +440,12 @@ function applyPublicProfile() {
   setText("business-days-text", formatProfileWeekdays(publicProfile.weekdays));
   setText("business-website-display", getProfileWebsiteLabel(publicProfile.website));
 
+  if (publicProfile.logoUrl) {
+    document.querySelectorAll(".avatar, .profile-avatar-large img, .profile-cover-logo").forEach((img) => {
+      img.src = publicProfile.logoUrl;
+    });
+  }
+
   document.querySelectorAll("[data-profile-badge]").forEach((badge) => {
     badge.hidden = publicProfile.badgeEnabled === false;
   });
@@ -928,7 +934,7 @@ async function rescheduleAppointment(startAt, label) {
 
     addMessage(`Me queda bien el ${label}.`, "user");
     currentAppointment = data.appointment;
-    addMessage(`Listo. Tu visita ahora es ${currentAppointment.display}.`, "assistant");
+    addMessage("Listo, cambié tu visita.", "assistant");
     showAppointmentCard(currentAppointment);
   } catch (error) {
     setTyping(false);

@@ -1,5 +1,6 @@
 const { query } = require("../lib/db");
 const { retrieveKnowledge, formatKnowledgeContext } = require("../lib/knowledge");
+const { getRuntimeConfig } = require("../lib/config");
 const {
   loadVisitorMessages,
   persistVisitorMessage,
@@ -350,7 +351,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function askGeminiWithFallback({ apiKey, contents, systemInstruction }) {
+async function askGeminiWithFallback({ apiKey, contents, systemInstruction, model = "gemini-3.1-flash-lite", fallbackModel = "gemini-3.5-flash-lite" }) {
   let done = false;
   let secondaryPromise = null;
 
@@ -358,7 +359,7 @@ async function askGeminiWithFallback({ apiKey, contents, systemInstruction }) {
     if (!secondaryPromise) {
       secondaryPromise = callGeminiModel({
         apiKey,
-        model: "gemini-3.5-flash-lite",
+        model: fallbackModel,
         contents,
         systemInstruction,
         timeoutMs: 6000
@@ -369,7 +370,7 @@ async function askGeminiWithFallback({ apiKey, contents, systemInstruction }) {
 
   const primary = callGeminiModel({
     apiKey,
-    model: "gemini-3.1-flash-lite",
+    model,
     contents,
     systemInstruction,
     timeoutMs: 6000
@@ -439,7 +440,8 @@ module.exports = async (req, res) => {
 
     const instantAnswer = getInstantAnswer(message, effectiveHistory);
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { ai } = await getRuntimeConfig();
+    const apiKey = ai.apiKey;
 
     if (!apiKey) {
       return res.status(500).json({
@@ -483,6 +485,8 @@ ${appointmentContext}`;
 
       responseText = await askGeminiWithFallback({
         apiKey,
+        model: ai.model,
+        fallbackModel: ai.fallbackModel,
         contents,
         systemInstruction
       });

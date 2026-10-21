@@ -1,6 +1,34 @@
-# AdmisIA CRM — Colegio Nubarian
+# AdmisIA
 
-Sistema de admisiones con IA para Inicial y Primaria.
+Asistente de admisiones con IA para colegios: chat estilo WhatsApp para las familias, agenda de visitas y panel de gestión.
+
+## Instalación en 4 pasos
+
+1. **Base de datos.** Creá una base PostgreSQL (Neon, Supabase, Railway o tu servidor) y copiá su URL.
+2. **Variables mínimas.** En Vercel (o en tu `.env`) definí solo:
+   - `DATABASE_URL`
+   - `CRM_JWT_SECRET` (cualquier texto largo y aleatorio)
+   - `CRON_SECRET` (otro texto largo)
+3. **Migraciones.** `npm install && npm run db:migrate`. Se puede correr las veces que haga falta: aplica solo lo nuevo.
+4. **Asistente inicial.** Entrá a `/dashboard`. Como no hay usuarios, aparece “Configuración inicial”: cargás el nombre del negocio y creás tu cuenta de administrador.
+
+Después, en **Configuración → Primeros pasos** tenés la lista de lo que falta:
+
+| Paso | Dónde |
+|---|---|
+| Datos del negocio (nombre, logo, dirección, redes, horario) | Configuración → Negocio |
+| Horarios de visitas y bloqueos | Configuración → Agenda |
+| Clave de IA (Gemini) | Configuración → Integraciones |
+| Correo saliente (Gmail, Microsoft 365, Zoho u otro) | Configuración → Integraciones |
+| Google Calendar (opcional) | Configuración → Integraciones |
+| Información para el asistente | Base de conocimiento |
+| Equipo y roles | Configuración → Equipo |
+
+Cada integración tiene un botón de prueba. Las claves se guardan cifradas (AES-256-GCM) y nunca se envían al navegador. Si una integración ya está definida por variables de entorno, el panel lo indica y sigue funcionando sin cambios.
+
+En una instalación nueva, el contenido de ejemplo de la base de conocimiento queda archivado: el asistente responde solo con lo que cargue el nuevo negocio.
+
+---
 
 ## Qué incluye
 

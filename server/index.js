@@ -39,6 +39,10 @@ const routes = {
   "/api/crm/analyze-lead": require("../handlers/crm/analyze-lead"),
   "/api/crm/settings": require("../handlers/crm/settings"),
   "/api/crm/blocked-slots": require("../handlers/crm/blocked-slots"),
+  "/api/crm/knowledge": require("../handlers/crm/knowledge"),
+  "/api/crm/integrations": require("../handlers/crm/integrations"),
+  "/api/crm/team": require("../handlers/crm/team"),
+  "/api/crm/setup": require("../handlers/crm/setup"),
   "/api/cron/followups": require("../api/cron/followups")
 };
 

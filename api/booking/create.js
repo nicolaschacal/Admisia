@@ -1,6 +1,7 @@
 const { withTransaction, query } = require("../../lib/db");
 const { validateSlot, ZONE } = require("../../lib/scheduling");
-const { queueAndTrySend } = require("../../lib/email");
+const { queueAndTrySend, getNotifyEmail } = require("../../lib/email");
+const { getProfile } = require("../../lib/profile");
 const { DateTime } = require("luxon");
 const { createCalendarEvent } = require("../../lib/google-calendar");
 const {
@@ -183,13 +184,14 @@ module.exports = async (req, res) => {
     });
 
     const localStart = DateTime.fromJSDate(new Date(created.appointment.start_at), { zone: "utc" }).setZone(ZONE);
-    const admissionsEmail = process.env.ADMISSIONS_EMAIL || "nubarian@nubarian.edu.uy";
+    const [admissionsEmail, profile] = await Promise.all([getNotifyEmail(), getProfile()]);
+    const address = [profile.addressLine1, profile.addressLine2].filter(Boolean).join(", ");
 
     try {
       const calendarEvent = await createCalendarEvent({
         startISO: localStart.toISO(),
         endISO: DateTime.fromJSDate(new Date(created.appointment.end_at), { zone: "utc" }).setZone(ZONE).toISO(),
-        summary: `Admisiones Nubarian · ${created.student.full_name}`,
+        summary: `Visita de admisión · ${created.student.full_name}`,
         description: [
           `Adulto responsable: ${created.lead.adult_name}`,
           `Teléfono: ${created.lead.phone}`,
@@ -227,20 +229,22 @@ module.exports = async (req, res) => {
       `Comentarios: ${created.student.comments || "Sin comentarios adicionales"}`
     ].join("\n");
 
-    await queueAndTrySend({
-      leadId: created.lead.id,
-      appointmentId: created.appointment.id,
-      recipient: admissionsEmail,
-      subject: `Nueva visita Nubarian · ${created.student.full_name} · ${localStart.toFormat("dd/LL HH:mm")}`,
-      bodyText: schoolBody
-    });
+    if (admissionsEmail) {
+      await queueAndTrySend({
+        leadId: created.lead.id,
+        appointmentId: created.appointment.id,
+        recipient: admissionsEmail,
+        subject: `Nueva visita · ${created.student.full_name} · ${localStart.toFormat("dd/LL HH:mm")}`,
+        bodyText: schoolBody
+      });
+    }
 
     const familyBody = [
       `Hola ${created.lead.adult_name},`,
       "",
-      "Tu visita al Colegio Nubarian quedó registrada.",
+      `Tu visita a ${profile.name} quedó registrada.`,
       `Fecha y hora: ${localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")}`,
-      "Dirección: Agraciada 2850, Montevideo.",
+      address ? `Dirección: ${address}.` : "",
       "",
       "El equipo de Admisiones podrá contactarte si necesita confirmar algún detalle."
     ].join("\n");
@@ -249,7 +253,7 @@ module.exports = async (req, res) => {
       leadId: created.lead.id,
       appointmentId: created.appointment.id,
       recipient: created.lead.email,
-      subject: "Confirmación de visita · Colegio Nubarian",
+      subject: `Confirmación de visita · ${profile.name}`,
       bodyText: familyBody
     });
 

@@ -12,7 +12,10 @@ const handlers = {
   "analyze-lead": require("../handlers/crm/analyze-lead"),
   "settings": require("../handlers/crm/settings"),
   "blocked-slots": require("../handlers/crm/blocked-slots"),
-  "knowledge": require("../handlers/crm/knowledge")
+  "knowledge": require("../handlers/crm/knowledge"),
+  "integrations": require("../handlers/crm/integrations"),
+  "team": require("../handlers/crm/team"),
+  "setup": require("../handlers/crm/setup")
 };
 
 module.exports = async (req, res) => {

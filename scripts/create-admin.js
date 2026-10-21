@@ -5,7 +5,7 @@ const { query, getPool } = require("../lib/db");
 async function main() {
   const email = (process.env.CRM_ADMIN_EMAIL || "").trim().toLowerCase();
   const password = process.env.CRM_ADMIN_PASSWORD || "";
-  const fullName = process.env.CRM_ADMIN_NAME || "Administrador Nubarian";
+  const fullName = process.env.CRM_ADMIN_NAME || "Administrador";
 
   if (!email || password.length < 10) {
     throw new Error("Definí CRM_ADMIN_EMAIL y una CRM_ADMIN_PASSWORD de al menos 10 caracteres.");

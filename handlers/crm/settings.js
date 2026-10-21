@@ -93,6 +93,10 @@ module.exports = async (req, res) => {
       const website = cleanUrl(profile.website);
       const instagram = cleanUrl(profile.instagram);
       const facebook = cleanUrl(profile.facebook);
+      const logoUrl = cleanUrl(profile.logoUrl);
+      if (profile.logoUrl && !logoUrl) {
+        return res.status(400).json({ success: false, message: "La dirección del logo no es válida." });
+      }
 
       if (profile.website && !website) {
         return res.status(400).json({ success: false, message: "La URL del sitio web no es válida." });
@@ -105,7 +109,7 @@ module.exports = async (req, res) => {
       }
 
       const profileValue = {
-        name: clean(profile.name, 160) || "Colegio Nubarian",
+        name: clean(profile.name, 160) || "Mi institución",
         category: clean(profile.category, 120) || "Educación",
         shortDescription: clean(profile.shortDescription, 260),
         statusText: clean(profile.statusText, 160),
@@ -123,7 +127,8 @@ module.exports = async (req, res) => {
         openHour: profileOpenHour,
         closeHour: profileCloseHour,
         weekdays: cleanWeekdays(profile.weekdays),
-        badgeEnabled: profile.badgeEnabled !== false
+        badgeEnabled: profile.badgeEnabled !== false,
+        logoUrl
       };
 
       if (profileValue.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileValue.email)) {
