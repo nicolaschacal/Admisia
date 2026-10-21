@@ -21,8 +21,10 @@ app.get(["/dashboard", "/dashboard/"], (req, res) => res.sendFile(path.join(fron
 
 const routes = {
   "/api/chat": require("../api/chat"),
+  "/api/chat/session": require("../api/chat/session"),
   "/api/booking/availability": require("../api/booking/availability"),
   "/api/booking/create": require("../api/booking/create"),
+  "/api/booking/manage": require("../api/booking/manage"),
   "/api/crm/login": require("../handlers/crm/login"),
   "/api/crm/logout": require("../handlers/crm/logout"),
   "/api/crm/me": require("../handlers/crm/me"),
