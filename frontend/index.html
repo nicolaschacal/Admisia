@@ -19,8 +19,8 @@
 
         <div class="contact-copy">
           <h1>
-            <span>Colegio Nubarian</span>
-            <span class="institutional-badge" aria-label="Perfil institucional" title="Perfil institucional">
+            <span id="header-profile-name">Colegio Nubarian</span>
+            <span class="institutional-badge" data-profile-badge aria-label="Perfil institucional" title="Perfil institucional">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.3 3.2 12 1.8l2.7 1.4 3-.2 1.4 2.7 2.5 1.6-.2 3 1.4 2.7-1.8 2.4-.5 3-3 .7-2.1 2.1-2.8-1-2.8 1-2.1-2.1-3-.7-.5-3L2.4 13l1.4-2.7-.2-3 2.5-1.6L7.5 3l1.8.2Z"/><path d="m8.2 12.2 2.4 2.4 5.3-5.4"/></svg>
             </span>
           </h1>
@@ -34,7 +34,7 @@
           <span>Agendar visita</span>
         </button>
 
-        <a class="header-action icon-only" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer" title="Sitio web" aria-label="Sitio web">
+        <a id="header-website-link" class="header-action icon-only" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer" title="Sitio web" aria-label="Sitio web">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
         </a>
 
@@ -66,16 +66,16 @@
             </div>
 
             <h2>
-              Colegio Nubarian
-              <span class="institutional-badge institutional-badge--profile" aria-label="Perfil institucional" title="Perfil institucional">
+              <span id="business-profile-name">Colegio Nubarian</span>
+              <span class="institutional-badge institutional-badge--profile" data-profile-badge aria-label="Perfil institucional" title="Perfil institucional">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.3 3.2 12 1.8l2.7 1.4 3-.2 1.4 2.7 2.5 1.6-.2 3 1.4 2.7-1.8 2.4-.5 3-3 .7-2.1 2.1-2.8-1-2.8 1-2.1-2.1-3-.7-.5-3L2.4 13l1.4-2.7-.2-3 2.5-1.6L7.5 3l1.8.2Z"/><path d="m8.2 12.2 2.4 2.4 5.3-5.4"/></svg>
               </span>
             </h2>
-            <p>Educación · Perfil institucional</p>
+            <p><span id="business-profile-category">Educación</span> · Perfil institucional</p>
           </section>
 
           <section class="profile-actions" aria-label="Acciones del colegio">
-            <a class="profile-action" href="tel:+59822080628">
+            <a id="business-call-action" class="profile-action" href="tel:+59822080628">
               <span class="profile-action-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3.5 4.8 5.9c-.8.8-.9 2-.4 3 2.4 4.7 6 8.3 10.7 10.7 1 .5 2.2.4 3-.4l2.4-2.4-4-4-2 2c-.4.4-1 .5-1.5.2-1.7-1-3-2.3-4-4-.3-.5-.2-1.1.2-1.5l2-2-4-4Z"/></svg>
               </span>
@@ -89,7 +89,7 @@
               <span>Compartir</span>
             </button>
 
-            <a class="profile-action" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">
+            <a id="business-website-action" class="profile-action" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">
               <span class="profile-action-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
               </span>
@@ -101,66 +101,66 @@
             <div class="profile-info-row profile-hours">
               <div>
                 <span id="business-open-status" class="profile-open-status">Horario de atención</span>
-                <strong>8:00 a 18:00</strong>
+                <strong id="business-hours-text">8:00 a 18:00</strong>
               </div>
-              <small>Lunes a viernes</small>
+              <small id="business-days-text">Lunes a viernes</small>
             </div>
 
             <div class="profile-info-row">
               <span class="profile-info-kicker">Categoría</span>
-              <strong>Educación</strong>
+              <strong id="business-category-text">Educación</strong>
             </div>
 
             <div class="profile-info-row">
               <span class="profile-info-kicker">Acerca de</span>
-              <strong>Colegio Nubarian · Inicial y Primaria</strong>
-              <span>Inscripciones abiertas</span>
+              <strong id="business-description-text">Colegio Nubarian · Inicial y Primaria</strong>
+              <span id="business-status-text">Inscripciones abiertas</span>
             </div>
           </section>
 
           <section class="profile-info-card profile-contact-card">
-            <a class="profile-contact-row" href="https://www.google.com/maps/search/?api=1&query=Av.%20Agraciada%202850%20Montevideo" target="_blank" rel="noreferrer">
+            <a id="business-map-link" class="profile-contact-row" href="https://www.google.com/maps/search/?api=1&query=Av.%20Agraciada%202850%20Montevideo" target="_blank" rel="noreferrer">
               <span class="profile-contact-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
               </span>
-              <span><strong>Av. Agraciada 2850</strong><small>11800 Montevideo, Uruguay</small></span>
+              <span><strong id="business-address-1">Av. Agraciada 2850</strong><small id="business-address-2">11800 Montevideo, Uruguay</small></span>
               <span class="profile-chevron">›</span>
             </a>
 
-            <a class="profile-contact-row" href="tel:+59822080628">
+            <a id="business-phone-link" class="profile-contact-row" href="tel:+59822080628">
               <span class="profile-contact-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 3.5 4.8 5.9c-.8.8-.9 2-.4 3 2.4 4.7 6 8.3 10.7 10.7 1 .5 2.2.4 3-.4l2.4-2.4-4-4-2 2c-.4.4-1 .5-1.5.2-1.7-1-3-2.3-4-4-.3-.5-.2-1.1.2-1.5l2-2-4-4Z"/></svg>
               </span>
-              <span><strong>2208 0628</strong><small>Teléfono</small></span>
+              <span><strong id="business-phone-display">2208 0628</strong><small>Teléfono</small></span>
               <span class="profile-chevron">›</span>
             </a>
 
-            <a class="profile-contact-row" href="mailto:nubarian@nubarian.edu.uy">
+            <a id="business-email-link" class="profile-contact-row" href="mailto:nubarian@nubarian.edu.uy">
               <span class="profile-contact-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
               </span>
-              <span><strong>nubarian@nubarian.edu.uy</strong><small>Correo electrónico</small></span>
+              <span><strong id="business-email-display">nubarian@nubarian.edu.uy</strong><small>Correo electrónico</small></span>
               <span class="profile-chevron">›</span>
             </a>
 
-            <a class="profile-contact-row" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">
+            <a id="business-website-link" class="profile-contact-row" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">
               <span class="profile-contact-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
               </span>
-              <span><strong>nubarian.edu.uy</strong><small>Sitio web</small></span>
+              <span><strong id="business-website-display">nubarian.edu.uy</strong><small>Sitio web</small></span>
               <span class="profile-chevron">›</span>
             </a>
           </section>
 
           <section class="profile-info-card">
-            <a class="profile-social-row" href="https://www.instagram.com/colegionubarian/" target="_blank" rel="noreferrer">
+            <a id="business-instagram-link" class="profile-social-row" href="https://www.instagram.com/colegionubarian/" target="_blank" rel="noreferrer">
               <span class="profile-social-mark">◎</span>
-              <span><strong>@colegionubarian</strong><small>Instagram</small></span>
+              <span><strong id="business-instagram-display">@colegionubarian</strong><small>Instagram</small></span>
               <span class="profile-chevron">›</span>
             </a>
-            <a class="profile-social-row" href="https://www.facebook.com/colegionubarian/" target="_blank" rel="noreferrer">
+            <a id="business-facebook-link" class="profile-social-row" href="https://www.facebook.com/colegionubarian/" target="_blank" rel="noreferrer">
               <span class="profile-social-mark">f</span>
-              <span><strong>Colegio Nubarian</strong><small>Facebook</small></span>
+              <span><strong id="business-facebook-display">Colegio Nubarian</strong><small>Facebook</small></span>
               <span class="profile-chevron">›</span>
             </a>
           </section>
@@ -242,7 +242,7 @@ También puedo mostrarte horarios disponibles para coordinar una visita.</div>
 
       <div class="composer-foot">
         <span>La información económica es orientativa.</span>
-        <a href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">nubarian.edu.uy</a>
+        <a id="footer-website-link" href="https://nubarian.edu.uy" target="_blank" rel="noreferrer">nubarian.edu.uy</a>
       </div>
     </footer>
   </main>
