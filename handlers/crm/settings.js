@@ -149,6 +149,34 @@ module.exports = async (req, res) => {
            ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()`,
           [JSON.stringify(profileValue)]
         );
+
+        const institutionalContent = [
+          `Institución: ${profileValue.name}.`,
+          "Niveles: Inicial y Primaria.",
+          "Inicial comprende propuestas para niños de 1 a 5 años.",
+          "Primaria comprende de 1.º a 6.º año.",
+          profileValue.addressLine1 || profileValue.addressLine2
+            ? `Dirección: ${[profileValue.addressLine1, profileValue.addressLine2].filter(Boolean).join(", ")}.`
+            : "",
+          profileValue.phoneDisplay ? `Teléfono: ${profileValue.phoneDisplay}.` : "",
+          profileValue.instagramLabel ? `Instagram: ${profileValue.instagramLabel}.` : "",
+          profileValue.email ? `Correo: ${profileValue.email}.` : "",
+          profileValue.website ? `Sitio web: ${profileValue.website}.` : ""
+        ].filter(Boolean).join("\n");
+
+        await client.query(
+          `UPDATE knowledge_items
+           SET content=$1,
+               summary=$2,
+               updated_by=$3,
+               updated_at=now()
+           WHERE title='Información general del Colegio Nubarian'`,
+          [
+            institutionalContent,
+            `${profileValue.name} ofrece Inicial y Primaria en Montevideo.`,
+            manager.sub
+          ]
+        );
       });
 
       return res.status(200).json({ success: true, profile: profileValue });
