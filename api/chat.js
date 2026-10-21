@@ -30,6 +30,7 @@ OBJETIVO
 - Responder de forma cálida, natural, precisa y breve.
 - Mantener el hilo de la conversación sin volver a presentarte en cada mensaje.
 - Cuando corresponda, proponer como siguiente paso una visita o entrevista.
+- Si ofrecés una visita o entrevista, preguntá de forma clara si quiere ver horarios disponibles dentro del chat. No derives a teléfono como primer paso cuando la agenda puede gestionarse aquí.
 
 REGLAS
 - Respondé siempre en español.
@@ -287,7 +288,7 @@ function getInstantAnswer(message, history = []) {
   return null;
 }
 
-async function callGeminiModel({ apiKey, model, contents, systemInstruction, timeoutMs = 8000 }) {
+async function callGeminiModel({ apiKey, model, contents, systemInstruction, timeoutMs = 6000 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -345,30 +346,68 @@ async function callGeminiModel({ apiKey, model, contents, systemInstruction, tim
   }
 }
 
+function isTransientModelError(error) {
+  return (
+    error?.name === "AbortError" ||
+    error?.status === 408 ||
+    error?.status === 429 ||
+    (Number(error?.status) >= 500 && Number(error?.status) <= 599)
+  );
+}
+
+function inferSuggestedAction(text) {
+  const normalized = normalizeText(text);
+  const invitation = /\b(queres|te gustaria|si queres|puedo ayudarte|puedo mostrarte|te muestro|agendamos)\b/.test(normalized);
+  const booking = /\b(agendar|coordinar|agenda|horarios disponibles|visita|entrevista)\b/.test(normalized);
+  return invitation && booking ? "booking" : null;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function askGeminiWithFallback({ apiKey, contents, systemInstruction }) {
-  const models = [
-    "gemini-3.1-flash-lite",
-    "gemini-3.5-flash-lite"
-  ];
+  let done = false;
+  let secondaryPromise = null;
 
-  let lastError;
-
-  for (const model of models) {
-    try {
-      return await callGeminiModel({ apiKey, model, contents, systemInstruction, timeoutMs: 8000 });
-    } catch (error) {
-      lastError = error;
-      const transient =
-        error?.name === "AbortError" ||
-        error?.status === 408 ||
-        error?.status === 429 ||
-        (Number(error?.status) >= 500 && Number(error?.status) <= 599);
-
-      if (!transient) throw error;
+  const getSecondary = () => {
+    if (!secondaryPromise) {
+      secondaryPromise = callGeminiModel({
+        apiKey,
+        model: "gemini-3.5-flash-lite",
+        contents,
+        systemInstruction,
+        timeoutMs: 6000
+      });
     }
-  }
+    return secondaryPromise;
+  };
 
-  throw lastError || new Error("No se pudo obtener respuesta de Gemini.");
+  const primary = callGeminiModel({
+    apiKey,
+    model: "gemini-3.1-flash-lite",
+    contents,
+    systemInstruction,
+    timeoutMs: 6000
+  }).catch((error) => {
+    if (!isTransientModelError(error)) throw error;
+    return getSecondary();
+  });
+
+  const hedge = delay(1200).then(() => {
+    if (done) return new Promise(() => {});
+    return getSecondary();
+  });
+
+  try {
+    const response = await Promise.any([primary, hedge]);
+    done = true;
+    return response;
+  } catch (aggregateError) {
+    done = true;
+    const errors = Array.isArray(aggregateError?.errors) ? aggregateError.errors : [];
+    throw errors[errors.length - 1] || aggregateError;
+  }
 }
 
 module.exports = async (req, res) => {
@@ -451,7 +490,8 @@ ${knowledgeContext}`;
         return res.status(200).json({
           success: true,
           response: instantAnswer,
-          source: "institutional-fallback"
+          source: "institutional-fallback",
+          action: inferSuggestedAction(instantAnswer)
         });
       }
 
@@ -471,7 +511,8 @@ ${knowledgeContext}`;
     return res.status(200).json({
       success: true,
       response: responseText,
-      source: "gemini"
+      source: "gemini",
+      action: inferSuggestedAction(responseText)
     });
   } catch (error) {
     if (error?.name === "AbortError") {

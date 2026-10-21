@@ -15,8 +15,10 @@ const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
 
 const HISTORY_KEY = "nubarian_chat_session_history";
 const SESSION_KEY = "nubarian_chat_session_id";
+const PENDING_ACTION_KEY = "nubarian_chat_pending_action";
 let conversationHistory = [];
 let sessionId = sessionStorage.getItem(SESSION_KEY);
+let pendingAction = sessionStorage.getItem(PENDING_ACTION_KEY);
 
 const params = new URLSearchParams(window.location.search);
 const attribution = {
@@ -170,12 +172,75 @@ function setLoading(isLoading) {
   sendButton.disabled = isLoading;
 }
 
+function normalizeIntentText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isAffirmative(text) {
+  return /^(si|s|dale|claro|perfecto|ok|okay|quiero|de acuerdo|bueno|vamos|agendemos|me gustaria|por favor)(\s|$)/.test(normalizeIntentText(text));
+}
+
+function isNegative(text) {
+  return /^(no|no gracias|ahora no|mas tarde)(\s|$)/.test(normalizeIntentText(text));
+}
+
+function suggestsBooking(text) {
+  const normalized = normalizeIntentText(text);
+  const invitation = /\b(queres|te gustaria|si queres|puedo ayudarte|puedo mostrarte|te muestro|agendamos)\b/.test(normalized);
+  const booking = /\b(agendar|coordinar|agenda|horarios disponibles|visita|entrevista)\b/.test(normalized);
+  return invitation && booking;
+}
+
+function lastAssistantOffersBooking() {
+  const lastAssistant = [...conversationHistory].reverse().find((item) => item?.role === "model" && item?.text);
+  return Boolean(lastAssistant && suggestsBooking(lastAssistant.text));
+}
+
+function setPendingAction(action) {
+  pendingAction = action || null;
+  if (pendingAction) {
+    sessionStorage.setItem(PENDING_ACTION_KEY, pendingAction);
+  } else {
+    sessionStorage.removeItem(PENDING_ACTION_KEY);
+  }
+}
+
+function removeBookingAction() {
+  ensureConversationRoot().querySelectorAll(".booking-action-row").forEach((node) => node.remove());
+}
+
+function addBookingAction() {
+  removeBookingAction();
+
+  const root = ensureConversationRoot();
+  const row = document.createElement("div");
+  row.className = "booking-action-row";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "booking-action-button";
+  button.textContent = "Ver horarios disponibles";
+  button.addEventListener("click", () => startBooking({ echoUser: false }));
+
+  row.appendChild(button);
+  root.appendChild(row);
+  scrollToBottom();
+}
+
 function isBookingIntent(text) {
   return /\b(agend|agenda|coordinar|visita|entrevista presencial|conocer el colegio|ir al colegio)\b/i.test(text);
 }
 
-async function startBooking() {
-  addMessage("Quiero agendar una visita.", "user");
+async function startBooking({ userMessage = "Quiero agendar una visita.", echoUser = true } = {}) {
+  setPendingAction(null);
+  removeBookingAction();
+  if (echoUser) addMessage(userMessage, "user");
   setLoading(true);
   setTyping(true, "revisando agenda…");
 
@@ -336,7 +401,7 @@ async function sendMessage(message) {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     let response;
 
@@ -365,6 +430,11 @@ async function sendMessage(message) {
     addMessage(data.response, "assistant");
     conversationHistory.push({ role: "user", text: message });
     conversationHistory.push({ role: "model", text: data.response });
+
+    const nextAction = data.action || (suggestsBooking(data.response) ? "booking" : null);
+    setPendingAction(nextAction);
+    if (nextAction === "booking") addBookingAction();
+
     saveHistory();
   } catch (error) {
     setTyping(false);
@@ -388,8 +458,21 @@ async function submitQuestion(text) {
   messageInput.value = "";
   messageInput.style.height = "auto";
 
+  const bookingWasOffered = pendingAction === "booking" || lastAssistantOffersBooking();
+
+  if (bookingWasOffered && isAffirmative(cleanText)) {
+    addMessage(cleanText, "user");
+    await startBooking({ echoUser: false });
+    return;
+  }
+
+  if (bookingWasOffered && isNegative(cleanText)) {
+    setPendingAction(null);
+    removeBookingAction();
+  }
+
   if (isBookingIntent(cleanText)) {
-    await startBooking();
+    await startBooking({ userMessage: cleanText });
     return;
   }
 
@@ -430,6 +513,8 @@ bookingHeaderButton.addEventListener("click", () => startBooking());
 newChatButton.addEventListener("click", () => {
   conversationHistory = [];
   sessionStorage.removeItem(HISTORY_KEY);
+  sessionStorage.removeItem(PENDING_ACTION_KEY);
+  pendingAction = null;
   sessionId = crypto.randomUUID();
   sessionStorage.setItem(SESSION_KEY, sessionId);
   window.location.reload();
@@ -449,3 +534,10 @@ document.addEventListener("gesturestart", (event) => event.preventDefault());
 
 stampStaticTimes();
 restoreConversation();
+
+if (!pendingAction && lastAssistantOffersBooking()) {
+  setPendingAction("booking");
+}
+if (pendingAction === "booking") {
+  addBookingAction();
+}
