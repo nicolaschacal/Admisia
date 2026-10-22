@@ -44,7 +44,7 @@ function sanitizeAI(values, current) {
   const primary = { ...(current.primary || {}) };
   const secondary = { ...(current.secondary || {}) };
   primary.provider = provider(values.primaryProvider) || primary.provider || "";
-  secondary.provider = provider(values.secondaryProvider) || secondary.provider || "";
+  secondary.provider = values.secondaryProvider === "" ? "" : provider(values.secondaryProvider) || secondary.provider || "";
   primary.model = clean(values.primaryModel, 120);
   secondary.model = clean(values.secondaryModel, 120);
   primary.baseUrl = clean(values.primaryBaseUrl, 300).replace(/\/$/, "");
