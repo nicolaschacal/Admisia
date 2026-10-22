@@ -13,7 +13,7 @@ const handlers = {
   "settings": require("../handlers/crm/settings"),
   "blocked-slots": require("../handlers/crm/blocked-slots"),
   "knowledge": require("../handlers/crm/knowledge"),
-  "integrations": require("../handlers/crm/integrations"),
+  "integrations": require("../handlers/crm/integrations-v2"),
   "team": require("../handlers/crm/team"),
   "setup": require("../handlers/crm/setup"),
   "capture": require("../handlers/crm/capture")
@@ -23,10 +23,6 @@ module.exports = async (req, res) => {
   const raw = req.query?.action;
   const action = Array.isArray(raw) ? raw[0] : String(raw || "");
   const handler = handlers[action];
-
-  if (!handler) {
-    return res.status(404).json({ success: false, message: "Ruta CRM no encontrada." });
-  }
-
+  if (!handler) return res.status(404).json({ success: false, message: "Ruta CRM no encontrada." });
   return handler(req, res);
 };
