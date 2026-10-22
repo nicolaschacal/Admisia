@@ -106,7 +106,7 @@ Las familias que conversan pero no agendan también pueden quedar como candidato
 
 Cada contacto crea el candidato (con su origen), una tarea de seguimiento, un aviso por correo a Admisiones y el análisis de la IA. En el panel aparecen en **Candidatos → Contactos sin visita**. Si después agenda una visita, sigue siendo el mismo candidato y la tarea se cierra sola.
 
-Todo se activa o desactiva desde **Configuración → Captación**, donde también se sube el folleto (PDF de hasta 3 MB) y las novedades de inscripción. Las columnas nuevas se crean solas la primera vez; `npm run db:migrate` aplica `database/004_capture.sql` en instalaciones nuevas.
+Todo se activa o desactiva desde **Configuración → Captación**, donde también se sube el folleto (PDF de hasta 3 MB) y las novedades de inscripción. No modifica la estructura de la base: el origen se guarda en la columna `source` de cada candidato y el detalle en su actividad, así funciona aunque el usuario de la base no sea dueño de las tablas.
 
 ## Dashboard
 

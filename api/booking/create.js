@@ -9,7 +9,6 @@ const {
   persistVisitorMessage,
   ensureConversation
 } = require("../../lib/visitor-session");
-const { ensureCaptureSchema } = require("../../lib/capture");
 
 function clean(value, max = 500) {
   return String(value || "").trim().slice(0, max);
@@ -68,7 +67,6 @@ module.exports = async (req, res) => {
     }
 
     const levelInterest = inferLevel(birthDate);
-    await ensureCaptureSchema();
 
     const created = await withTransaction(async (client) => {
       const lockKey = Math.abs(
@@ -112,7 +110,6 @@ module.exports = async (req, res) => {
                utm_source=COALESCE(NULLIF($6,''), utm_source),
                utm_medium=COALESCE(NULLIF($7,''), utm_medium),
                utm_campaign=COALESCE(NULLIF($8,''), utm_campaign),
-               capture_source=COALESCE(capture_source,'booking'),
                last_contact_at=now(),
                updated_at=now()
            WHERE id=$1
@@ -133,8 +130,8 @@ module.exports = async (req, res) => {
         const inserted = await client.query(
           `INSERT INTO leads
              (adult_name,email,phone,status,level_interest,privacy_consent_at,
-              utm_source,utm_medium,utm_campaign,last_contact_at,source,capture_source)
-           VALUES ($1,$2,$3,'visit_scheduled',$4,now(),$5,$6,$7,now(),'chat','booking')
+              utm_source,utm_medium,utm_campaign,last_contact_at,source)
+           VALUES ($1,$2,$3,'visit_scheduled',$4,now(),$5,$6,$7,now(),'chat')
            RETURNING *`,
           [
             clean(adultName, 200),

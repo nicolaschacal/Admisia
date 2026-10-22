@@ -1,9 +1,6 @@
--- Captación de contactos sin visita: de dónde llegó cada candidato y qué pidió.
-ALTER TABLE leads ADD COLUMN IF NOT EXISTS capture_source text;
-ALTER TABLE leads ADD COLUMN IF NOT EXISTS capture_detail text;
-UPDATE leads SET capture_source='booking' WHERE capture_source IS NULL;
-CREATE INDEX IF NOT EXISTS idx_leads_capture_source ON leads(capture_source);
-
+-- Captación de contactos sin visita. El origen se guarda en leads.source
+-- (info, vacancy, brochure, callback, detected) y el detalle en activities,
+-- así no hace falta modificar tablas existentes.
 INSERT INTO crm_settings(key, value) VALUES
   ('capture', '{"contactOffer":true,"vacancyAlerts":true,"vacancyText":"","brochure":true,"callback":true,"autoDetect":true}'::jsonb)
 ON CONFLICT (key) DO NOTHING;
