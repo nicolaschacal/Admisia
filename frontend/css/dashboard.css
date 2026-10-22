@@ -482,6 +482,8 @@ td.num { font-variant-numeric: tabular-nums; text-align: right; }
 .callout { padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-size: 14px; color: var(--text-2); line-height: 1.5; }
 .callout strong { color: var(--text); font-weight: 600; }
 .callout code, .copy-value { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; color: var(--text); word-break: break-all; }
+.integration-alert.is-error { background: var(--danger-soft); color: var(--danger); }
+.integration-alert.is-error strong { color: var(--danger); }
 .inline-result { font-size: 14px; }
 .inline-result.is-ok { color: var(--success); }
 .inline-result.is-error { color: var(--danger); }
