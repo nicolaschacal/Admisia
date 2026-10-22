@@ -16,6 +16,7 @@ async function view() {
     ai: {
       configured: Boolean(p.apiKey && p.provider && p.model),
       source: config.ai.sources.primaryApiKey,
+      apiKeyHint: hint(p.apiKey), model: p.model, fallbackModel: s.model,
       primary: { provider: p.provider, model: p.model, baseUrl: p.baseUrl, apiKeyHint: hint(p.apiKey), configured: Boolean(p.apiKey && p.provider && p.model) },
       secondary: { provider: s.provider, model: s.model, baseUrl: s.baseUrl, apiKeyHint: hint(s.apiKey), configured: Boolean(s.apiKey && s.provider && s.model) },
       providers: PROVIDERS.map((id) => ({ id, label: PROVIDER_DEFAULTS[id].label })),
@@ -45,8 +46,7 @@ function sanitizeAI(values, current) {
   secondary.model = clean(values.secondaryModel, 120);
   primary.baseUrl = clean(values.primaryBaseUrl, 300).replace(/\/$/, "");
   secondary.baseUrl = clean(values.secondaryBaseUrl, 300).replace(/\/$/, "");
-  next.primary = primary;
-  next.secondary = secondary;
+  next.primary = primary; next.secondary = secondary;
   if (values.primaryApiKey) next.primaryApiKey = encrypt(clean(values.primaryApiKey, 400));
   if (values.secondaryApiKey) next.secondaryApiKey = encrypt(clean(values.secondaryApiKey, 400));
   if (values.clearPrimaryApiKey) delete next.primaryApiKey;
@@ -72,20 +72,15 @@ async function testAI(values) {
 module.exports = async (req, res) => {
   const manager = requireManager(req, res);
   if (!manager) return;
-
   const action = clean(req.body?.action || req.query?.action, 20);
   const section = clean(req.body?.section, 20);
-
-  // Email/calendar keep using the mature existing integration handler.
   if (req.method !== "GET" && section && section !== "ai") return legacy(req, res);
-
   if (req.method === "GET") {
     try {
       const integrations = await view();
       const safeCount = async (sql) => { try { const r = await query(sql); return Number(r.rows[0]?.count || 0); } catch { return null; } };
       const [managers, knowledge, profileRow] = await Promise.all([
-        safeCount("SELECT count(*) FROM managers WHERE active"),
-        safeCount("SELECT count(*) FROM knowledge_items WHERE status='active'"),
+        safeCount("SELECT count(*) FROM managers WHERE active"), safeCount("SELECT count(*) FROM knowledge_items WHERE status='active'"),
         query("SELECT value FROM crm_settings WHERE key='profile'").then((r) => r.rows[0]?.value || null).catch(() => null)
       ]);
       const profileCustomized = Boolean(profileRow && profileRow.name && (profileRow.addressLine1 || profileRow.phoneDisplay) && profileRow.email);
@@ -99,12 +94,10 @@ module.exports = async (req, res) => {
         { id: "calendar", label: "Google Calendar conectado", done: integrations.calendar.configured, required: false, target: "integrations" }
       ];
       return res.status(200).json({ success: true, integrations, checklist, isAdmin: manager.role === "admin" });
-    } catch (error) { return res.status(500).json({ success: false, message: "No se pudo cargar la configuración de integraciones." }); }
+    } catch { return res.status(500).json({ success: false, message: "No se pudo cargar la configuración de integraciones." }); }
   }
-
   if (req.method !== "POST") return res.status(405).json({ success: false, message: "Método no permitido." });
   if (manager.role !== "admin") return res.status(403).json({ success: false, message: "Solo un administrador puede cambiar las integraciones." });
-
   try {
     if (action === "health") {
       const config = await getRuntimeConfig({ fresh: true });
@@ -114,10 +107,8 @@ module.exports = async (req, res) => {
     if (section !== "ai") return res.status(400).json({ success: false, message: "Sección desconocida." });
     if (action === "test") return res.status(200).json({ success: true, message: await testAI(req.body?.values || {}) });
     if (action === "save") {
-      const stored = await readStored();
-      stored.ai = sanitizeAI(req.body?.values || {}, stored.ai || {});
-      await writeStored(stored);
-      return res.status(200).json({ success: true, integrations: (await view()), message: "Configuración de IA guardada." });
+      const stored = await readStored(); stored.ai = sanitizeAI(req.body?.values || {}, stored.ai || {}); await writeStored(stored);
+      return res.status(200).json({ success: true, integrations: await view(), message: "Configuración de IA guardada." });
     }
     return res.status(400).json({ success: false, message: "Acción desconocida." });
   } catch (error) {
