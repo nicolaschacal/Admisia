@@ -16,61 +16,8 @@ const {
   notifyCapture
 } = require("../lib/capture");
 const { analyzeLead } = require("../lib/lead-ai");
-const { vocabFor } = require("../lib/business-types");
 
 function buildSystemInstruction(profile) {
-  if (profile.businessType && profile.businessType !== "school") return buildServiceInstruction(profile);
-  return buildSchoolInstruction(profile);
-}
-
-// Domain rules for each non-school business type.
-const SERVICE_RULES = {
-  health: `
-- Nunca des diagnósticos, no interpretes síntomas ni estudios y no recomiendes medicamentos, dosis ni tratamientos. Si te consultan algo clínico, explicá con amabilidad que eso lo evalúa el profesional en la consulta y ofrecé reservarla.
-- Si la persona describe una urgencia o síntomas graves (por ejemplo dolor en el pecho, dificultad para respirar, sangrado abundante, pérdida de conocimiento o ideas de hacerse daño), indicale que llame de inmediato al servicio de emergencias (911 en Uruguay) o vaya a la emergencia más cercana, y no sigas con la reserva.
-- No pidas detalles médicos en el chat. Para reservar alcanza con el motivo general de la consulta.
-- No confirmes coberturas, reintegros ni precios que no estén en la base de conocimiento; sugerí confirmarlos con Recepción.`,
-  beauty: `
-- Recomendá servicios solo a partir de la base de conocimiento: no inventes tratamientos, precios, duraciones ni resultados.
-- Si preguntan por contraindicaciones, embarazo, alergias u otras condiciones de salud, sugerí consultarlo con el profesional antes o durante el turno.
-- No prometas resultados garantizados.`,
-  other: `
-- No inventes servicios, precios ni duraciones que no estén en la base de conocimiento.`
-};
-
-function buildServiceInstruction(profile) {
-  const v = vocabFor(profile.businessType, profile.name);
-  const name = profile.name || "el negocio";
-  const notes = String(profile.assistantNotes || "").trim();
-  return `
-Sos el ${v.assistantRole} de ${name}${profile.category ? ` (${profile.category})` : ""}.
-
-OBJETIVO
-- Orientar a las personas interesadas en los servicios de ${name}.
-- Responder de forma cálida, natural, precisa y breve.
-- Mantener el hilo de la conversación sin volver a presentarte en cada mensaje.
-- Cuando corresponda, proponer como siguiente paso reservar ${v.appt.a}.
-- Si ofrecés reservar, preguntá de forma clara si quiere ver horarios disponibles dentro del chat. No derives a teléfono como primer paso cuando la agenda puede gestionarse aquí.
-- Si la persona pide expresamente que la llamen o hablar con alguien, eso tiene prioridad: no insistas con la reserva.
-
-REGLAS
-- Respondé siempre en español.
-- Usá texto plano: sin Markdown, sin asteriscos y sin encabezados con #.
-- Podés usar guiones simples para ordenar información.
-- No inventes datos. Tu fuente de verdad es la BASE DE CONOCIMIENTO que se incluye en cada consulta.
-- Si la base no contiene un dato exacto, decí que debe confirmarse con ${v.team}.
-- No presentes precios estimativos como definitivos.
-- No supongas disponibilidad fuera de la agenda del chat.${SERVICE_RULES[v.type] || ""}
-${notes ? `\nINDICACIONES DE ${name.toUpperCase()}\n${notes}\n` : ""}
-USO DE LA BASE DE CONOCIMIENTO
-- Priorizá la información recuperada por relevancia.
-- Combiná varias fuentes si ayudan a responder mejor.
-- No menciones al usuario que estás usando una base de conocimiento, RAG, fragmentos o contexto recuperado.
-- Si dos fuentes parecen contradecirse, evitá afirmar el dato y sugerí confirmarlo con ${v.team}.
-`;
-}
-
-function buildSchoolInstruction(profile) {
   const name = profile.name || "la institución";
   const notes = String(profile.assistantNotes || "").trim();
   return `
@@ -116,52 +63,7 @@ function wantsCallback(message) {
   return CALLBACK_RE.test(normalizeText(message));
 }
 
-function buildCaptureInstruction(capture, context) {
-  if (context.businessType && context.businessType !== "school") return buildServiceCaptureInstruction(capture, context);
-  return buildSchoolCaptureInstruction(capture, context);
-}
-
-const VACANCY_PROMPT = {
-  health: "cuando no encuentra horario, pregunta si hay turnos antes o por la agenda de un profesional: ofrecé anotarla en la lista de espera para avisarle si se libera un horario.",
-  beauty: "cuando no encuentra horario o pregunta por promociones: ofrecé avisarle cuando se libere un turno o haya promociones.",
-  other: "cuando no encuentra horario: ofrecé avisarle cuando se libere un turno."
-};
-
-function buildServiceCaptureInstruction(capture, { hasLead, brochureAvailable, userTurns, callbackRequested, businessType }) {
-  const v = vocabFor(businessType);
-  if (callbackRequested) {
-    return `
-PEDIDO DE LLAMADA
-- La persona pidió que la llamen o prefiere hablarlo por teléfono. Respetalo: no insistas con la reserva.
-- Respondé en una o dos frases cálidas que con gusto alguien de ${v.team} la llama y que confirme su teléfono y el mejor horario en el formulario que aparece debajo.
-`;
-  }
-  if (hasLead) {
-    return "\nCONTACTO\n- Ya tenemos los datos de contacto de esta persona. No se los pidas de nuevo. Si pide que la llamen, nunca le insistas con la reserva.\n";
-  }
-  const options = [];
-  if (capture.contactOffer) options.push(`- [[CONTACTO:info]] cuando mostró interés concreto (servicios, precios, horarios) pero no reserva: ofrecé que ${v.team} le mande la información por WhatsApp o correo.`);
-  if (capture.vacancyAlerts) options.push(`- [[CONTACTO:vacantes]] ${VACANCY_PROMPT[v.type] || VACANCY_PROMPT.other}${capture.vacancyText ? ` Dato oficial para responder: "${String(capture.vacancyText).slice(0, 400)}".` : ""}`);
-  if (capture.brochure && brochureAvailable) options.push("- [[CONTACTO:folleto]] cuando pide más detalle, un folleto, lista de precios, PDF o material para leer: ofrecé mandárselo.");
-  if (capture.callback) options.push(`- [[CONTACTO:llamada]] cuando pide hablar con una persona, que la llamen o prefiere conversarlo por teléfono: ofrecé que ${v.team} la llame.`);
-  if (!options.length) return "";
-
-  return `
-CAPTACIÓN DE CONTACTO
-- Objetivo secundario: que las personas interesadas que todavía no reservan dejen un contacto para que ${v.team} las acompañe.
-- Si quiere reservar, la reserva tiene prioridad sobre las demás ofertas (salvo que pida que la llamen).
-- ${userTurns < 1 ? "Todavía es muy temprano en la conversación: NO ofrezcas dejar datos en esta respuesta, salvo que pida expresamente que la llamen." : "Podés hacer un ofrecimiento si encaja naturalmente con lo que preguntó."}
-- Respondé primero la consulta completa. El ofrecimiento va al final, en una sola frase, como algo útil y nunca como condición.
-- Si ya lo ofreciste antes o la persona dijo que no, no lo repitas.
-- No pidas los datos ni enumeres campos: los completa en un formulario que aparece en el chat.
-- Cuando hagas un ofrecimiento, agregá al final, en una línea aparte, una sola de estas etiquetas exactas (la persona no la ve):
-${options.join("\n")}
-- No uses las etiquetas en ningún otro caso.
-- Si escribe su teléfono o su correo por su cuenta, agradecé y confirmá que ${v.team} la va a contactar.
-`;
-}
-
-function buildSchoolCaptureInstruction(capture, { hasLead, brochureAvailable, userTurns, callbackRequested }) {
+function buildCaptureInstruction(capture, { hasLead, brochureAvailable, userTurns, callbackRequested }) {
   if (callbackRequested) {
     return `
 PEDIDO DE LLAMADA
@@ -234,15 +136,12 @@ function resolveAction(responseText, { capture, hasLead, hasAppointment, brochur
 
 // When the AI is unavailable, answer with the most relevant item of the
 // client's own knowledge base instead of failing.
-function knowledgeFallback(items = [], profile = null) {
+function knowledgeFallback(items = []) {
   const top = items.find((item) => item?.content);
   if (!top) return null;
   const content = String(top.content).trim();
   const excerpt = content.length > 700 ? `${content.slice(0, 700).replace(/\s+\S*$/, "")}…` : content;
-  const offer = profile && profile.businessType && profile.businessType !== "school"
-    ? `reservar ${vocabFor(profile.businessType).appt.a}`
-    : "coordinar una visita";
-  return `${excerpt}\n\nSi querés, puedo ayudarte a ${offer}.`;
+  return `${excerpt}\n\nSi querés, puedo ayudarte a coordinar una visita.`;
 }
 
 
@@ -326,7 +225,7 @@ function isTransientModelError(error) {
 function inferSuggestedAction(text) {
   const normalized = normalizeText(text);
   const invitation = /\b(queres|te gustaria|si queres|puedo ayudarte|puedo mostrarte|te muestro|agendamos)\b/.test(normalized);
-  const booking = /\b(agendar|coordinar|agenda|horarios disponibles|visita|entrevista|reservar|reserva|turno|cita)\b/.test(normalized);
+  const booking = /\b(agendar|coordinar|agenda|horarios disponibles|visita|entrevista)\b/.test(normalized);
   return invitation && booking ? "booking" : null;
 }
 
@@ -467,12 +366,11 @@ module.exports = async (req, res) => {
       brochureAvailable: Boolean((await brochurePromise.catch(() => null)) || capture.brochureUrl),
       userTurns,
       previousAssistant,
-      callbackRequested: capture.callback !== false && wantsCallback(message),
-      businessType: (await profilePromise.catch(() => ({}))).businessType || "school"
+      callbackRequested: capture.callback !== false && wantsCallback(message)
     });
 
     if (!apiKey) {
-      const fallback = knowledgeFallback(await knowledgePromise.catch(() => []), await profilePromise.catch(() => null));
+      const fallback = knowledgeFallback(await knowledgePromise.catch(() => []));
       await userPersistPromise.catch(() => {});
       await afterCapture;
       if (fallback) {
@@ -507,23 +405,17 @@ module.exports = async (req, res) => {
       context = ctx;
       knowledgeItems = retrieved || [];
       const knowledgeContext = formatKnowledgeContext(knowledgeItems);
-      const isSchool = !profile.businessType || profile.businessType === "school";
-      const words = vocabFor(profile.businessType).appt;
-      let appointmentContext = isSchool
-        ? "No hay una visita activa vinculada a este navegador."
-        : `No hay ${words.a} activ${words.pron === "la" ? "a" : "o"} vinculad${words.pron === "la" ? "a" : "o"} a este navegador.`;
+      let appointmentContext = "No hay una visita activa vinculada a este navegador.";
 
       if (currentAppointment) {
-        appointmentContext = isSchool
-          ? `La familia tiene una visita activa para ${new Date(currentAppointment.start_at).toISOString()}. ` +
-            `Estado: ${currentAppointment.status}. Estudiante: ${currentAppointment.student_name || "sin nombre asociado"}. ` +
-            "Si pregunta por cambiar o cancelar, explicá que puede hacerlo directamente en este chat."
-          : `La persona tiene ${words.a} reservad${words.pron === "la" ? "a" : "o"} para ${new Date(currentAppointment.start_at).toISOString()}. ` +
-            `Estado: ${currentAppointment.status}. Si pregunta por cambiar${words.pron} o cancelar${words.pron}, explicá que puede hacerlo directamente en este chat.`;
+        appointmentContext =
+          `La familia tiene una visita activa para ${new Date(currentAppointment.start_at).toISOString()}. ` +
+          `Estado: ${currentAppointment.status}. Estudiante: ${currentAppointment.student_name || "sin nombre asociado"}. ` +
+          "Si pregunta por cambiar o cancelar, explicá que puede hacerlo directamente en este chat.";
       }
 
       const capturedContext = justCaptured
-        ? `\n${profile.businessType && profile.businessType !== "school" ? "La persona" : "La familia"} acaba de compartir su ${[found.phone && "teléfono", found.email && "correo"].filter(Boolean).join(" y ")} en este mensaje y ya quedó registrado. Agradecé en una frase y confirmá que el equipo de ${vocabFor(profile.businessType).team} la va a contactar; después respondé lo que haya preguntado.`
+        ? `\nLa familia acaba de compartir su ${[found.phone && "teléfono", found.email && "correo"].filter(Boolean).join(" y ")} en este mensaje y ya quedó registrado. Agradecé en una frase y confirmá que el equipo de Admisiones la va a contactar; después respondé lo que haya preguntado.`
         : "";
 
       const systemInstruction = `${buildSystemInstruction(profile)}${buildCaptureInstruction(capture, context)}
@@ -545,7 +437,7 @@ Mensajes de la familia en esta conversación: ${userTurns + 1}.${capturedContext
     } catch (error) {
       console.error("Gemini fallback agotado:", error?.status, error?.message);
 
-      const fallback = knowledgeFallback(knowledgeItems, await profilePromise.catch(() => null));
+      const fallback = knowledgeFallback(knowledgeItems);
       if (fallback) {
         await Promise.allSettled([
           userPersistPromise,

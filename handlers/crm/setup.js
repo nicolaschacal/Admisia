@@ -5,9 +5,6 @@
 const bcrypt = require("bcryptjs");
 const { query, withTransaction } = require("../../lib/db");
 const { createSessionToken, setSessionCookie } = require("../../lib/auth");
-const { normalizeType } = require("../../lib/business-types");
-
-const CATEGORY = { school: "Educación", health: "Salud", beauty: "Estética y bienestar", other: "Servicios" };
 
 async function needsSetup() {
   const result = await query("SELECT count(*) FROM managers");
@@ -28,7 +25,6 @@ module.exports = async (req, res) => {
     const email = String(req.body?.email || "").trim().toLowerCase().slice(0, 240);
     const password = String(req.body?.password || "");
     const businessName = String(req.body?.businessName || "").trim().slice(0, 160);
-    const businessType = normalizeType(req.body?.businessType);
 
     if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ success: false, message: "Ingresá tu nombre y un correo válido." });
@@ -55,7 +51,7 @@ module.exports = async (req, res) => {
         // institution's name. Any active content left from a previous setup is
         // archived; the bundled templates stay as drafts to fill in.
         const profile = {
-          businessType, name: businessName, category: CATEGORY[businessType], shortDescription: "", statusText: "",
+          name: businessName, category: "Educación", shortDescription: "", statusText: "",
           addressLine1: "", addressLine2: "", mapQuery: "", phoneDisplay: "", phoneE164: "",
           email, website: "", instagram: "", instagramLabel: "", facebook: "", facebookLabel: "",
           openHour: 8, closeHour: 18, weekdays: [1, 2, 3, 4, 5], badgeEnabled: true
@@ -66,10 +62,6 @@ module.exports = async (req, res) => {
           [JSON.stringify(profile)]
         );
         await client.query("UPDATE knowledge_items SET status='archived', updated_at=now() WHERE status='active'");
-        // The bundled drafts are written for schools; other businesses start empty.
-        if (businessType !== "school") {
-          await client.query("UPDATE knowledge_items SET status='archived', updated_at=now() WHERE status='draft'");
-        }
       }
       return created.rows[0];
     });

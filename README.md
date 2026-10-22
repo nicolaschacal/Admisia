@@ -96,17 +96,6 @@ Cuando un gestor marca una entrevista como realizada:
 
 El tiempo puede cambiarse con `FOLLOWUP_DELAY_DAYS`.
 
-## Tipos de negocio
-
-AdmisIA no es solo para colegios. Al crear la cuenta (y después en **Configuración → Negocio**) se elige el rubro:
-
-- **Colegio o institución educativa:** el comportamiento original (familias, visitas, estudiante, inscripción).
-- **Consultorio, clínica o servicio de salud:** pacientes y consultas. El asistente nunca diagnostica ni recomienda tratamientos y deriva urgencias al 911.
-- **Estética, peluquería o bienestar:** clientes y turnos, sin prometer resultados.
-- **Otro servicio con turnos:** versión genérica.
-
-El rubro adapta el chat (botones, bienvenida, preguntas sugeridas, formulario de reserva), los mensajes y correos, las etapas del panel, la captación y las instrucciones de la IA. Los servicios, precios y profesionales no vienen precargados: el asistente los conoce por la base de conocimiento. La definición de cada rubro está en `lib/business-types.js`.
-
 ## Captación de contactos sin visita
 
 Las familias que conversan pero no agendan también pueden quedar como candidatos:
