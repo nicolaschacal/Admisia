@@ -1,0 +1,15 @@
+from pathlib import Path
+p=Path('api/chat.js')
+s=p.read_text()
+s=s.replace('const { getRuntimeConfig } = require("../lib/config");','const { getRuntimeConfig } = require("../lib/config");\nconst { askWithFallback } = require("../lib/ai");')
+a=s.index('async function callGeminiModel(')
+b=s.index('\nmodule.exports = async',a)
+s=s[:a]+'''async function askGeminiWithFallback({ apiKey, contents, systemInstruction, model, fallbackModel, primary, secondary }) {\n  return askWithFallback({\n    primary: primary || { provider: "gemini", apiKey, model },\n    secondary: secondary || { provider: "gemini", apiKey, model: fallbackModel },\n    contents,\n    systemInstruction\n  });\n}\n'''+s[b:]
+s=s.replace('const apiKey = ai.apiKey;','const apiKey = ai.primary.apiKey;')
+s=s.replace('if (!apiKey) {','if (!apiKey || !ai.primary.provider || !ai.primary.model) {')
+s=s.replace('        model: ai.model,\n        fallbackModel: ai.fallbackModel,','        model: ai.model,\n        fallbackModel: ai.fallbackModel,\n        primary: ai.primary,\n        secondary: ai.secondary,')
+s=s.replace('source: "gemini",','source: ai.primary.provider,')
+s=s.replace('"Gemini fallback agotado:"','"Proveedor de IA agotado:"')
+s=s.replace('"Gemini demoró demasiado en responder (más de 20 segundos)."','"El proveedor de IA demoró demasiado en responder."')
+s=s.replace('"Error interno al comunicarse con Gemini."','"Error interno al comunicarse con el proveedor de IA."')
+p.write_text(s)
