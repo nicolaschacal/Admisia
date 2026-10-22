@@ -33,7 +33,15 @@
       <form id="setup-form" class="auth-form" hidden>
         <h1>Configuración inicial</h1>
         <p class="muted">Creá la cuenta de administrador. Después vas a poder completar los datos del negocio, conectar la IA y el correo desde Configuración.</p>
-        <label class="field"><span>Nombre del negocio</span><input name="businessName" required maxlength="160" placeholder="Ej. Colegio San Martín"></label>
+        <label class="field"><span>Tipo de negocio</span>
+          <select name="businessType" required>
+            <option value="school">Colegio o institución educativa</option>
+            <option value="health">Consultorio, clínica o servicio de salud</option>
+            <option value="beauty">Estética, peluquería o bienestar</option>
+            <option value="other">Otro servicio con turnos</option>
+          </select>
+        </label>
+        <label class="field"><span>Nombre del negocio</span><input name="businessName" required maxlength="160" placeholder="Ej. Colegio San Martín, Clínica Sur, Estudio Luz"></label>
         <label class="field"><span>Tu nombre</span><input name="name" autocomplete="name" required maxlength="160"></label>
         <label class="field"><span>Correo</span><input name="email" type="email" autocomplete="username" required></label>
         <label class="field"><span>Contraseña</span><input name="password" type="password" autocomplete="new-password" minlength="10" required placeholder="Mínimo 10 caracteres"></label>

@@ -1,5 +1,6 @@
 const { query, withTransaction } = require("../../lib/db");
 const { requireManager } = require("../../lib/auth");
+const { normalizeType } = require("../../lib/business-types");
 
 function clean(value, max = 500) {
   return String(value ?? "").trim().slice(0, max);
@@ -125,6 +126,7 @@ module.exports = async (req, res) => {
       }
 
       const profileValue = {
+        businessType: normalizeType(profile.businessType),
         name: clean(profile.name, 160) || "Mi institución",
         category: clean(profile.category, 120) || "Educación",
         shortDescription: clean(profile.shortDescription, 260),

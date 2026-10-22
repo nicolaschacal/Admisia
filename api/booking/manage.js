@@ -10,6 +10,29 @@ const {
   updateCalendarEventStatus,
   rescheduleCalendarEvent
 } = require("../../lib/google-calendar");
+const { getProfile } = require("../../lib/profile");
+const { vocabFor } = require("../../lib/business-types");
+
+// "visita" for schools (original texts), "consulta"/"turno" for other businesses.
+async function apptWords() {
+  const profile = await getProfile().catch(() => ({ businessType: "school" }));
+  const school = profile.businessType === "school";
+  const w = vocabFor(profile.businessType).appt;
+  const o = w.pron === "la" ? "a" : "o";
+  return {
+    school,
+    notFound: school ? words.notFound : `No encontramos ${w.a} asociad${o} a este chat.`,
+    noActive: school ? words.noActive : `No tenés ${w.a} activ${o} para modificar.`,
+    inactive: school ? "La visita ya no está activa." : `${w.the.charAt(0).toUpperCase() + w.the.slice(1)} ya no está activ${o}.`,
+    cancelledActivity: school ? "La familia canceló la visita desde el chat." : `Se canceló ${w.the} desde el chat.`,
+    cancelledMsg: (when) => school
+      ? `Listo. Cancelé tu visita del ${when}. Si querés, podemos coordinar otra fecha cuando te quede mejor.`
+      : `Listo. Cancelé ${w.your} del ${when}. Si querés, podemos buscar otra fecha cuando te quede mejor.`,
+    rescheduledActivity: (when) => school ? `Visita reprogramada para ${when}.` : `${w.Noun} reprogramad${o} para ${when}.`,
+    rescheduledMsg: (when) => school ? `Listo. Reprogramé tu visita para el ${when}.` : `Listo. Reprogramé ${w.your} para el ${when}.`,
+    failed: school ? "No se pudo actualizar la visita." : `No se pudo actualizar ${w.the}.`
+  };
+}
 
 function appointmentPayload(row) {
   if (!row) return null;
@@ -30,6 +53,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ success: false, message: "Método no permitido." });
   }
 
+  const words = await apptWords();
   try {
     const session = await ensureConversation(req, res);
     if (!session.lead_id) {
@@ -57,7 +81,7 @@ module.exports = async (req, res) => {
            RETURNING *`,
           [current.id, session.lead_id]
         );
-        if (!updated.rows[0]) throw new Error("La visita ya no está activa.");
+        if (!updated.rows[0]) throw new Error(words.inactive);
 
         await client.query(
           `UPDATE leads
@@ -71,7 +95,7 @@ module.exports = async (req, res) => {
            VALUES($1,'appointment_cancelled',$2,$3::jsonb)`,
           [
             session.lead_id,
-            "La familia canceló la visita desde el chat.",
+            words.cancelledActivity,
             JSON.stringify({ appointmentId: current.id, previousStartAt: current.start_at })
           ]
         );
@@ -90,7 +114,7 @@ module.exports = async (req, res) => {
         req,
         res,
         "assistant",
-        `Listo. Cancelé tu visita del ${previous.setLocale("es").toFormat("cccc dd/LL 'a las' HH:mm")}. Si querés, podemos coordinar otra fecha cuando te quede mejor.`,
+        words.cancelledMsg(previous.setLocale("es").toFormat("cccc dd/LL 'a las' HH:mm")),
         session.lead_id
       );
 
@@ -127,14 +151,14 @@ module.exports = async (req, res) => {
           ]
         );
 
-        if (!result.rows[0]) throw new Error("La visita ya no está activa.");
+        if (!result.rows[0]) throw new Error(words.inactive);
 
         await client.query(
           `INSERT INTO activities(lead_id,type,description,metadata)
            VALUES($1,'appointment_rescheduled',$2,$3::jsonb)`,
           [
             session.lead_id,
-            `Visita reprogramada para ${slot.start.setLocale("es").toFormat("dd/LL/yyyy HH:mm")}.`,
+            words.rescheduledActivity(slot.start.setLocale("es").toFormat("dd/LL/yyyy HH:mm")),
             JSON.stringify({
               appointmentId: current.id,
               previousStartAt: current.start_at,
@@ -166,7 +190,7 @@ module.exports = async (req, res) => {
         req,
         res,
         "assistant",
-        `Listo. Reprogramé tu visita para el ${display}.`,
+        words.rescheduledMsg(display),
         session.lead_id
       );
 
@@ -182,6 +206,6 @@ module.exports = async (req, res) => {
     if (error.constraint === "appointments_no_overlap") {
       return res.status(409).json({ success: false, message: "Ese horario ya no está disponible. Elegí otro." });
     }
-    return res.status(500).json({ success: false, message: error.message || "No se pudo actualizar la visita." });
+    return res.status(500).json({ success: false, message: error.message || words.failed });
   }
 };

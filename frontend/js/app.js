@@ -28,6 +28,33 @@ const usesSoftwareKeyboardViewport =
   window.matchMedia("(pointer: coarse)").matches &&
   Number(navigator.maxTouchPoints || 0) > 0;
 
+// Vocabulary of the business type (rubro). Defaults are the original school
+// texts; /api/profile sends the right ones for this business.
+let V = {
+  type: "school",
+  form: "school",
+  team: "Admisiones",
+  cta: "Agendar visita",
+  ctaLong: "Agendar una visita",
+  ctaTitle: "Agendar una visita",
+  bookingIntro: "Completá tus datos para confirmar la visita.",
+  confirmButton: "Confirmar visita",
+  consentBooking: "Acepto que el colegio use estos datos solo para el proceso de admisión.",
+  consentContact: "Acepto que el colegio use estos datos para contactarme sobre admisiones.",
+  welcome: null,
+  quick: null,
+  vacancyTitle: "Aviso de vacantes",
+  vacancySubtitle: "Te avisamos apenas haya novedades de vacantes e inscripciones.",
+  vacancyButton: "Avisame",
+  vacancyEcho: "Sí, avisame cuando haya novedades.",
+  appt: {
+    noun: "visita", Noun: "Visita", a: "una visita", the: "la visita", your: "tu visita", pron: "la",
+    scheduled: "agendada", cancelledAdj: "cancelada", confirmed: "Visita confirmada", cancelled: "Visita cancelada"
+  }
+};
+const isSchool = () => V.type === "school";
+const apptO = () => (V.appt.pron === "la" ? "a" : "o");
+
 // Neutral defaults. The real data comes from /api/profile (the client's own
 // configuration in the dashboard).
 let publicProfile = {
@@ -264,11 +291,14 @@ function isNegative(text) {
 function suggestsBooking(text) {
   const normalized = normalizeIntentText(text);
   const invitation = /\b(queres|te gustaria|si queres|puedo ayudarte|puedo mostrarte|te muestro|agendamos)\b/.test(normalized);
-  const booking = /\b(agendar|coordinar|agenda|horarios disponibles|visita|entrevista)\b/.test(normalized);
+  const booking = /\b(agendar|coordinar|agenda|horarios disponibles|visita|entrevista|reservar|turno|cita)\b/.test(normalized);
   return invitation && booking;
 }
 
 function isBookingIntent(text) {
+  if (!isSchool()) {
+    return /\b(agend|reserv|sacar (un )?turno|pedir (un )?turno|quiero (un )?turno|sacar hora|pedir hora|una cita|turno para)/i.test(normalizeIntentText(text));
+  }
   return /\b(agend|agenda|coordinar|visita|entrevista presencial|conocer el colegio|ir al colegio)\b/i.test(text);
 }
 
@@ -313,36 +343,39 @@ function addBookingAction() {
   scrollToBottom();
 }
 
-const CONTACT_COPY = {
-  info: {
-    button: "Sí, que me escriban",
-    title: "Recibir información",
-    subtitle: "Admisiones te escribe por WhatsApp o correo.",
-    submit: "Enviar mis datos",
-    echo: "Sí, quiero que me manden la información."
-  },
-  vacancy: {
-    button: "Avisame",
-    title: "Aviso de vacantes",
-    subtitle: "Te avisamos apenas haya novedades de vacantes e inscripciones.",
-    submit: "Quiero que me avisen",
-    echo: "Sí, avisame cuando haya novedades."
-  },
-  brochure: {
-    button: "Quiero el folleto",
-    title: "Folleto",
-    subtitle: "Te lo mandamos por correo y también lo podés descargar acá.",
-    submit: "Recibir el folleto",
-    echo: "Sí, quiero el folleto."
-  },
-  callback: {
-    button: "Que me llamen",
-    title: "Que te llamen",
-    subtitle: "Una persona de Admisiones te llama cuando te quede cómodo.",
-    submit: "Pedir llamada",
-    echo: "Prefiero que me llamen."
-  }
-};
+function buildContactCopy() {
+  return {
+    info: {
+      button: "Sí, que me escriban",
+      title: "Recibir información",
+      subtitle: `${V.team} te escribe por WhatsApp o correo.`,
+      submit: "Enviar mis datos",
+      echo: "Sí, quiero que me manden la información."
+    },
+    vacancy: {
+      button: V.vacancyButton,
+      title: V.vacancyTitle,
+      subtitle: V.vacancySubtitle,
+      submit: isSchool() ? "Quiero que me avisen" : "Anotarme",
+      echo: V.vacancyEcho
+    },
+    brochure: {
+      button: "Quiero el folleto",
+      title: "Folleto",
+      subtitle: "Te lo mandamos por correo y también lo podés descargar acá.",
+      submit: "Recibir el folleto",
+      echo: "Sí, quiero el folleto."
+    },
+    callback: {
+      button: "Que me llamen",
+      title: "Que te llamen",
+      subtitle: `Una persona de ${V.team} te llama cuando te quede cómodo.`,
+      submit: "Pedir llamada",
+      echo: "Prefiero que me llamen."
+    }
+  };
+}
+let CONTACT_COPY = buildContactCopy();
 let contactCaptured = false;
 let knownContact = null;
 let captureCallbackEnabled = true;
@@ -434,7 +467,7 @@ function showContactCard(reason, { echo = "" } = {}) {
     </div>` : `<p class="contact-hint">${needsEmail ? "Te mandamos el folleto a este correo." : "Con uno de los dos alcanza."}</p>`}
     <label class="consent-row">
       <input name="consent" type="checkbox" value="true" required>
-      <span>Acepto que el colegio use estos datos para contactarme sobre admisiones.</span>
+      <span>${escapeHtml(V.consentContact)}</span>
     </label>
     <button type="submit" class="chat-btn chat-btn--primary booking-submit"><span>${escapeHtml(copy.submit)}</span></button>
   `;
@@ -594,7 +627,7 @@ function showAppointmentCard(appointment = currentAppointment) {
   if (!appointment) return;
   removeAppointmentCard();
 
-  const { date, time } = splitAppointmentDisplay(appointment.display || appointment.shortDisplay || "Visita agendada");
+  const { date, time } = splitAppointmentDisplay(appointment.display || appointment.shortDisplay || `${V.appt.Noun} ${V.appt.scheduled}`);
   const mapLink = document.getElementById("business-map-link")?.getAttribute("href");
   const mapHref = mapLink && mapLink !== "#" ? mapLink : "";
   const street = [publicProfile.addressLine1, publicProfile.addressLine2].filter(Boolean).join(", ");
@@ -602,7 +635,7 @@ function showAppointmentCard(appointment = currentAppointment) {
   const wrap = document.createElement("div");
   wrap.className = "appointment-card";
   wrap.innerHTML = `
-    <p class="appt-status">${uiIcon("check")}Visita confirmada</p>
+    <p class="appt-status">${uiIcon("check")}${escapeHtml(V.appt.confirmed)}</p>
     <p class="appt-date">${escapeHtml(date)}</p>
     ${time ? `<p class="appt-time">${escapeHtml(time)} h</p>` : ""}
     <ul class="appt-details">
@@ -617,7 +650,7 @@ function showAppointmentCard(appointment = currentAppointment) {
   actions.append(
     ...(mapHref ? [bubbleButton("Cómo llegar", { icon: "pin", href: mapHref })] : []),
     bubbleButton("Cambiar horario", { icon: "swap", onClick: () => startReschedule({ echoUser: true }) }),
-    bubbleButton("Cancelar visita", { icon: "x", tone: "danger", onClick: () => showCancelConfirmation({ echoUser: true }) })
+    bubbleButton(`Cancelar ${V.appt.noun}`, { icon: "x", tone: "danger", onClick: () => showCancelConfirmation({ echoUser: true }) })
   );
   wrap.appendChild(actions);
   addCustomAssistantCard(wrap, "appointment-card-row");
@@ -694,7 +727,7 @@ function applyPublicProfile() {
   if (footerWebsite) footerWebsite.textContent = publicProfile.website ? getProfileWebsiteLabel(publicProfile.website) : "";
 
   hideMissingProfileData();
-  document.title = `${publicProfile.name} | Admisiones`;
+  document.title = `${publicProfile.name} | ${V.team}`;
   updateBusinessOpenStatus();
 }
 
@@ -722,13 +755,13 @@ function applyWelcomeMessage() {
   const node = document.getElementById("welcome-text");
   if (!node) return;
   const custom = String(publicProfile.welcomeMessage || "").trim();
-  node.textContent = custom || [
+  node.textContent = custom || (V.welcome || [
     `¡Hola! 👋 Soy el asistente de admisiones de ${publicProfile.name}.`,
     "",
     "Puedo ayudarte con la propuesta educativa, horarios, proceso de inscripción y costos.",
     "",
     "También puedo mostrarte horarios disponibles para coordinar una visita."
-  ].join("\n");
+  ]).join("\n");
 }
 
 // A client may not have every channel. Hide rows and actions without data.
@@ -763,6 +796,28 @@ function hideMissingProfileData() {
   });
 }
 
+function applyVocabulary() {
+  const header = document.getElementById("booking-header");
+  if (header) {
+    header.title = V.ctaTitle;
+    const label = header.querySelector("span");
+    if (label) label.textContent = V.cta;
+  }
+  const chips = [...document.querySelectorAll(".quick-question")];
+  const questionChips = chips.filter((chip) => chip.dataset.action !== "booking");
+  (V.quick || []).forEach(([label, question], index) => {
+    const chip = questionChips[index];
+    if (!chip) return;
+    chip.dataset.question = question;
+    const span = chip.querySelector("span");
+    if (span) span.textContent = label;
+  });
+  const bookingChip = chips.find((chip) => chip.dataset.action === "booking");
+  if (bookingChip?.querySelector("span")) bookingChip.querySelector("span").textContent = V.ctaLong;
+  document.querySelector(".chat-app")?.setAttribute("aria-label", `Chat de ${V.team.toLowerCase()}`);
+  document.querySelector(".typing-bubble")?.setAttribute("aria-label", `${publicProfile.name || V.team} está escribiendo`);
+}
+
 async function loadPublicProfile() {
   try {
     const response = await fetch("/api/profile", {
@@ -772,6 +827,9 @@ async function loadPublicProfile() {
     const data = await response.json();
     if (response.ok && data.success && data.profile) {
       publicProfile = { ...publicProfile, ...data.profile };
+      if (data.vocab) V = { ...V, ...data.vocab };
+      CONTACT_COPY = buildContactCopy();
+      applyVocabulary();
     }
   } catch (error) {
     console.error("No se pudo cargar el perfil público:", error);
@@ -832,7 +890,7 @@ function closeBusinessProfile() {
 async function shareBusinessProfile() {
   const shareData = {
     title: publicProfile.name,
-    text: `${publicProfile.name} · Admisiones · ${publicProfile.shortDescription || publicProfile.category}`,
+    text: `${publicProfile.name} · ${V.team} · ${publicProfile.shortDescription || publicProfile.category}`,
     url: publicProfile.website || window.location.origin
   };
 
@@ -1004,14 +1062,14 @@ function renderSlots(availability, onSelect) {
   return picker;
 }
 
-async function startBooking({ userMessage = "Quiero agendar una visita.", echoUser = true } = {}) {
+async function startBooking({ userMessage = isSchool() ? "Quiero agendar una visita." : `Quiero reservar ${V.appt.a}.`, echoUser = true } = {}) {
   await bootstrapPromise;
   setPendingAction(null);
   removeBookingAction();
 
   if (currentAppointment) {
     if (echoUser) addMessage(userMessage, "user");
-    addMessage("Ya tenés una visita agendada. Podés cambiarla o cancelarla desde acá.", "assistant");
+    addMessage(`Ya tenés ${V.appt.a} ${V.appt.scheduled}. Podés cambiar${V.appt.pron} o cancelar${V.appt.pron} desde acá.`, "assistant");
     showAppointmentCard(currentAppointment);
     return;
   }
@@ -1025,7 +1083,7 @@ async function startBooking({ userMessage = "Quiero agendar una visita.", echoUs
     setTyping(false);
 
     if (!availability.length) {
-      addMessage("No encontré horarios disponibles en los próximos días. El equipo de Admisiones puede ayudarte a coordinar otra opción.", "assistant");
+      addMessage(`No encontré horarios disponibles en los próximos días. El equipo de ${V.team} puede ayudarte a coordinar otra opción.`, "assistant");
       return;
     }
 
@@ -1042,34 +1100,43 @@ async function startBooking({ userMessage = "Quiero agendar una visita.", echoUs
   }
 }
 
-function showBookingForm(startAt, label) {
-  addMessage(`Me queda bien el ${label}.`, "user");
+const field = (name, label, attrs = "") => `
+      <label class="field">
+        <span>${label}</span>
+        <input placeholder="${label}" name="${name}" ${attrs}>
+      </label>`;
 
-  const container = document.createElement("div");
-  container.className = "booking-form-card";
+function bookingFieldsHtml() {
+  const contact = `
+    <div class="field-group">${field("adultName", "Nombre y apellido", 'autocomplete="name" required maxlength="200"')}${field("email", "Correo electrónico", 'type="email" inputmode="email" autocomplete="email" required maxlength="200"')}${field("phone", "Teléfono", 'type="tel" inputmode="tel" autocomplete="tel" required maxlength="80"')}
+    </div>`;
+  const more = (inner) => `
+    <details class="field-group booking-more">
+      <summary><span>Más información</span><small>Opcional</small>${uiIcon("chevron", "ui-icon booking-more-chevron")}</summary>${inner}
+    </details>`;
+  const comments = (label = "Comentarios") => `
+      <label class="field">
+        <span>${label}</span>
+        <textarea placeholder="${label}" name="comments" rows="2" maxlength="1500"></textarea>
+      </label>`;
 
-  const head = document.createElement("div");
-  head.className = "booking-head";
-  head.innerHTML = `
-    <span class="booking-head-copy">
-      <strong>${escapeHtml(capitalize(label))}</strong>
-      <small>Completá tus datos para confirmar la visita.</small>
-    </span>
-  `;
-  const changeSlot = document.createElement("button");
-  changeSlot.type = "button";
-  changeSlot.className = "link-button";
-  changeSlot.textContent = "Cambiar";
-  changeSlot.addEventListener("click", () => {
-    container.closest(".message-row")?.remove();
-    startBooking({ echoUser: false });
-  });
-  head.appendChild(changeSlot);
-  container.appendChild(head);
-
-  const form = document.createElement("form");
-  form.className = "booking-form";
-  form.innerHTML = `
+  if (V.form === "health") {
+    return `${contact}
+    <div class="field-group">${field("reason", "Motivo de la consulta (opcional)", 'maxlength="300"')}
+    </div>
+    <p class="contact-hint">No hace falta que detalles síntomas: el profesional lo conversa en la consulta.</p>${more(`${field("documentId", "Cédula o documento", 'maxlength="40" inputmode="numeric"')}${field("insurance", "Cobertura o mutualista", 'maxlength="120"')}`)}`;
+  }
+  if (V.form === "beauty") {
+    return `${contact}
+    <div class="field-group">${field("service", "Servicio que te interesa (opcional)", 'maxlength="200"')}
+    </div>${more(comments())}`;
+  }
+  if (V.form === "other") {
+    return `${contact}
+    <div class="field-group">${field("reason", "Motivo o servicio (opcional)", 'maxlength="300"')}
+    </div>${more(comments())}`;
+  }
+  return `
     <div class="field-group">
       <label class="field">
         <span>Nombre y apellido</span>
@@ -1104,12 +1171,42 @@ function showBookingForm(startAt, label) {
         <span>Comentarios</span>
         <textarea placeholder="Comentarios" name="comments" rows="2" maxlength="1500"></textarea>
       </label>
-    </details>
+    </details>`;
+}
+
+function showBookingForm(startAt, label) {
+  addMessage(`Me queda bien el ${label}.`, "user");
+
+  const container = document.createElement("div");
+  container.className = "booking-form-card";
+
+  const head = document.createElement("div");
+  head.className = "booking-head";
+  head.innerHTML = `
+    <span class="booking-head-copy">
+      <strong>${escapeHtml(capitalize(label))}</strong>
+      <small>${escapeHtml(V.bookingIntro)}</small>
+    </span>
+  `;
+  const changeSlot = document.createElement("button");
+  changeSlot.type = "button";
+  changeSlot.className = "link-button";
+  changeSlot.textContent = "Cambiar";
+  changeSlot.addEventListener("click", () => {
+    container.closest(".message-row")?.remove();
+    startBooking({ echoUser: false });
+  });
+  head.appendChild(changeSlot);
+  container.appendChild(head);
+
+  const form = document.createElement("form");
+  form.className = "booking-form";
+  form.innerHTML = `${bookingFieldsHtml()}
     <label class="consent-row">
       <input name="privacyConsent" type="checkbox" value="true" required>
-      <span>Acepto que el colegio use estos datos solo para el proceso de admisión.</span>
+      <span>${escapeHtml(V.consentBooking)}</span>
     </label>
-    <button type="submit" class="chat-btn chat-btn--primary booking-submit"><span>Confirmar visita</span></button>
+    <button type="submit" class="chat-btn chat-btn--primary booking-submit"><span>${escapeHtml(V.confirmButton)}</span></button>
   `;
 
   form.addEventListener("submit", async (event) => {
@@ -1118,7 +1215,7 @@ function showBookingForm(startAt, label) {
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = true;
     submit.querySelector("span").textContent = "Confirmando…";
-    setTyping(true, "confirmando visita…");
+    setTyping(true, `confirmando ${V.appt.noun}…`);
 
     const payload = Object.fromEntries(new FormData(form).entries());
     payload.startAt = startAt;
@@ -1136,7 +1233,7 @@ function showBookingForm(startAt, label) {
       const data = await response.json();
       setTyping(false);
 
-      if (!response.ok || !data.success) throw new Error(data.message || "No se pudo confirmar la visita.");
+      if (!response.ok || !data.success) throw new Error(data.message || `No se pudo confirmar ${V.appt.the}.`);
 
       currentAppointment = data.appointment;
       container.innerHTML = `
@@ -1146,12 +1243,12 @@ function showBookingForm(startAt, label) {
         </div>
       `;
 
-      addMessage("¡Listo! Tu visita quedó agendada. Si necesitás cambiar el horario, decímelo acá mismo.", "assistant");
+      addMessage(`¡Listo! ${capitalize(V.appt.your)} quedó ${V.appt.scheduled}. Si necesitás cambiar el horario, decímelo acá mismo.`, "assistant");
       showAppointmentCard(currentAppointment);
     } catch (error) {
       setTyping(false);
       submit.disabled = false;
-      submit.querySelector("span").textContent = "Confirmar visita";
+      submit.querySelector("span").textContent = V.confirmButton;
       const errorBox = form.querySelector(".booking-error") || document.createElement("div");
       errorBox.className = "booking-error";
       errorBox.textContent = error.message;
@@ -1167,11 +1264,11 @@ async function startReschedule({ echoUser = false } = {}) {
   await bootstrapPromise;
 
   if (!currentAppointment) {
-    addMessage("No encontré una visita activa asociada a este chat.", "assistant");
+    addMessage(`No encontré ${V.appt.a} activ${apptO()} asociad${apptO()} a este chat.`, "assistant");
     return;
   }
 
-  if (echoUser) addMessage("Quiero cambiar el horario de mi visita.", "user");
+  if (echoUser) addMessage(`Quiero cambiar el horario de mi ${V.appt.noun}.`, "user");
   setLoading(true);
   setTyping(true, "buscando otros horarios…");
 
@@ -1180,7 +1277,7 @@ async function startReschedule({ echoUser = false } = {}) {
     setTyping(false);
 
     addMessage(
-      `Tu visita actual es ${currentAppointment.display}. Elegí un nuevo horario:`,
+      `${capitalize(V.appt.your)} actual es ${currentAppointment.display}. Elegí un nuevo horario:`,
       "assistant"
     );
 
@@ -1196,7 +1293,7 @@ async function startReschedule({ echoUser = false } = {}) {
 }
 
 async function rescheduleAppointment(startAt, label) {
-  setTyping(true, "reprogramando visita…");
+  setTyping(true, `reprogramando ${V.appt.noun}…`);
 
   try {
     const response = await fetch("/api/booking/manage", {
@@ -1208,28 +1305,28 @@ async function rescheduleAppointment(startAt, label) {
     const data = await response.json();
     setTyping(false);
 
-    if (!response.ok || !data.success) throw new Error(data.message || "No se pudo cambiar la visita.");
+    if (!response.ok || !data.success) throw new Error(data.message || `No se pudo cambiar ${V.appt.the}.`);
 
     addMessage(`Me queda bien el ${label}.`, "user");
     currentAppointment = data.appointment;
-    addMessage("Listo, cambié tu visita.", "assistant");
+    addMessage(`Listo, cambié ${V.appt.your}.`, "assistant");
     showAppointmentCard(currentAppointment);
   } catch (error) {
     setTyping(false);
-    addMessage(error.message || "No se pudo cambiar la visita.", "assistant");
+    addMessage(error.message || `No se pudo cambiar ${V.appt.the}.`, "assistant");
   }
 }
 
 function showCancelConfirmation({ echoUser = false } = {}) {
   if (!currentAppointment) return;
-  if (echoUser) addMessage("Quiero cancelar mi visita.", "user");
+  if (echoUser) addMessage(`Quiero cancelar mi ${V.appt.noun}.`, "user");
 
   const wrapper = document.createElement("div");
   wrapper.className = "cancel-confirmation";
 
   const { date, time } = splitAppointmentDisplay(currentAppointment.display);
   const text = document.createElement("p");
-  text.textContent = `¿Cancelar la visita del ${date.toLowerCase()}${time ? ` a las ${time}` : ""}?`;
+  text.textContent = `¿Cancelar ${V.appt.the} del ${date.toLowerCase()}${time ? ` a las ${time}` : ""}?`;
 
   const actions = document.createElement("div");
   actions.className = "bubble-actions bubble-actions--split";
@@ -1244,7 +1341,7 @@ function showCancelConfirmation({ echoUser = false } = {}) {
 
 async function cancelAppointment(confirmation = null) {
   confirmation?.querySelectorAll("button").forEach((button) => { button.disabled = true; });
-  setTyping(true, "cancelando visita…");
+  setTyping(true, `cancelando ${V.appt.noun}…`);
 
   try {
     const response = await fetch("/api/booking/manage", {
@@ -1256,7 +1353,7 @@ async function cancelAppointment(confirmation = null) {
     const data = await response.json();
     setTyping(false);
 
-    if (!response.ok || !data.success) throw new Error(data.message || "No se pudo cancelar la visita.");
+    if (!response.ok || !data.success) throw new Error(data.message || `No se pudo cancelar ${V.appt.the}.`);
 
     const { date, time } = splitAppointmentDisplay(currentAppointment?.display || "");
     currentAppointment = null;
@@ -1264,11 +1361,11 @@ async function cancelAppointment(confirmation = null) {
     if (confirmation) {
       confirmation.innerHTML = `
         <div class="booking-success">
-          <p class="appt-status appt-status--cancelled">${uiIcon("x")}Visita cancelada</p>
+          <p class="appt-status appt-status--cancelled">${uiIcon("x")}${escapeHtml(V.appt.cancelled)}</p>
           ${date ? `<p>${escapeHtml(date)}${time ? ` · ${escapeHtml(time)}` : ""}</p>` : ""}
         </div>`;
     }
-    addMessage("Listo. La visita quedó cancelada. Cuando quieras, podemos coordinar otra fecha o, si preferís, alguien de Admisiones te llama.", "assistant");
+    addMessage(`Listo. ${capitalize(V.appt.the)} quedó ${V.appt.cancelledAdj}. Cuando quieras, podemos coordinar otra fecha o, si preferís, alguien de ${V.team} te llama.`, "assistant");
     addFollowUpActions([
       ["Elegir otra fecha", () => startBooking({ userMessage: "Quiero elegir otra fecha.", echoUser: true })],
       ...(captureCallbackEnabled ? [["Que me llamen", () => showContactCard("callback", { echo: CONTACT_COPY.callback.echo })]] : [])
@@ -1276,7 +1373,7 @@ async function cancelAppointment(confirmation = null) {
   } catch (error) {
     confirmation?.querySelectorAll("button").forEach((button) => { button.disabled = false; });
     setTyping(false);
-    addMessage(error.message || "No se pudo cancelar la visita.", "assistant");
+    addMessage(error.message || `No se pudo cancelar ${V.appt.the}.`, "assistant");
   }
 }
 

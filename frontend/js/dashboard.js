@@ -18,7 +18,7 @@ const scrim = $("#sidebar-scrim");
 const dialog = $("#dialog");
 const dialogBody = $("#dialog-body");
 
-const STAGES = [
+let STAGES = [
   ["new_inquiry", "Nuevos"],
   ["qualified", "Interesados"],
   ["visit_scheduled", "Visita agendada"],
@@ -28,9 +28,54 @@ const STAGES = [
   ["enrolled", "Confirmados"],
   ["lost", "No continúa"]
 ];
-const STAGE_LABEL = Object.fromEntries(STAGES);
+let STAGE_LABEL = Object.fromEntries(STAGES);
 
-const APPT_STATUS = {
+// Vocabulary of the business type (rubro); defaults are the original school texts.
+let V = {
+  type: "school",
+  team: "Admisiones",
+  panelName: "Panel de admisiones",
+  client: "familia", clients: "familias", Client: "Familia", Clients: "Familias",
+  lead: "candidato", Lead: "Candidato", Leads: "Candidatos",
+  person: "estudiante",
+  vacancyLabel: "Aviso de vacantes",
+  vacancyOption: ["Aviso de vacantes", "Si pregunta por cupos, inscripciones o el año próximo, el asistente ofrece avisarle cuando haya novedades."],
+  vacancyTextLabel: "Novedades de inscripción",
+  vacancyTextPlaceholder: "Ej. Las inscripciones para 2027 abren el 1 de noviembre. Quedan pocos lugares en Inicial 4.",
+  vacancyTextHelp: "Opcional. El asistente lo usa al hablar de vacantes e inscripciones.",
+  searchPlaceholder: "Buscar familia, estudiante o correo",
+  knowledgeHint: "Agregá precios, horarios, niveles y todo lo que las familias suelen preguntar.",
+  appt: { noun: "visita", Noun: "Visita", plural: "visitas", Plural: "Visitas", a: "una visita", the: "la visita", pron: "la", scheduled: "agendada" }
+};
+let BUSINESS_TYPES = [];
+const isSchool = () => V.type === "school";
+// "Visitas próximas" / "Turnos próximos": adjectives agree with the noun.
+const agree = (base) => `${base}${V.appt.pron === "la" ? "a" : "o"}`;
+const agreePl = (base) => `${base}${V.appt.pron === "la" ? "as" : "os"}`;
+
+function applyDashboardVocab() {
+  if (V.stages) {
+    STAGES = STAGES.map(([key, label]) => [key, V.stages[key] || label]);
+    STAGE_LABEL = Object.fromEntries(STAGES);
+  }
+  VIEW_TITLES.pipeline = V.Leads;
+  if (V.appt.pron === "lo") {
+    APPT_STATUS = {
+      scheduled: ["Agendado", ""],
+      confirmed: ["Confirmado", "pill-accent"],
+      completed: ["Realizado", "pill-success"],
+      no_show: ["No asistió", "pill-warning"],
+      cancelled: ["Cancelado", "pill-danger"]
+    };
+  }
+  const navLabel = $('[data-view="pipeline"] span');
+  if (navLabel) navLabel.textContent = V.Leads;
+  if (leadSearch) leadSearch.placeholder = V.searchPlaceholder;
+  CAPTURE_LABEL.vacancy = V.vacancyLabel;
+  $$(".brand-copy span, .auth-brand span").forEach((node) => { if (!node.hasAttribute("data-brand-name")) node.textContent = V.panelName; });
+}
+
+let APPT_STATUS = {
   scheduled: ["Agendada", ""],
   confirmed: ["Confirmada", "pill-accent"],
   completed: ["Realizada", "pill-success"],
@@ -206,7 +251,11 @@ function initialsLogo(name, color) {
 
 async function loadBrand() {
   try {
-    const p = (await api("/api/profile")).profile || {};
+    const data = await api(`/api/profile?t=${Date.now()}`);
+    const p = data.profile || {};
+    if (data.vocab) V = { ...V, ...data.vocab };
+    if (data.businessTypes) BUSINESS_TYPES = data.businessTypes;
+    applyDashboardVocab();
     const color = HEX_COLOR.test(p.brandColor || "") ? p.brandColor : "";
     if (color) document.documentElement.style.setProperty("--brand", color);
     else document.documentElement.style.removeProperty("--brand");
@@ -214,13 +263,13 @@ async function loadBrand() {
   } catch { /* keep defaults */ }
   $$("[data-brand-name]").forEach((node) => { node.textContent = brand.name; });
   if (brand.logo) $$(".auth-logo, .brand-logo").forEach((img) => { img.src = brand.logo; });
-  document.title = `Panel de admisiones · ${brand.name}`;
+  document.title = `${V.panelName} · ${brand.name}`;
 }
 
 /* ---------- Auth ---------- */
 
 async function init() {
-  loadBrand();
+  await loadBrand();
   try {
     const data = await api("/api/crm/me");
     showApp(data.manager);
@@ -405,23 +454,23 @@ async function loadOverview() {
         </div>` : ""}
 
       <div class="stats">
-        <div class="card stat"><span>Consultas (30 días)</span><strong>${s.inquiries_30d}</strong></div>
-        <div class="card stat"><span>Candidatos nuevos (30 días)</span><strong>${s.leads_30d}</strong></div>
-        <button class="card stat stat-link" data-go-contacts><span>Contactos sin visita (30 días)</span><strong>${s.contacts_no_visit_30d ?? 0}</strong></button>
-        <div class="card stat"><span>Visitas próximas</span><strong>${s.upcoming_appointments}</strong></div>
+        <div class="card stat"><span>${isSchool() ? "Consultas" : "Conversaciones"} (30 días)</span><strong>${s.inquiries_30d}</strong></div>
+        <div class="card stat"><span>${esc(V.Leads)} nuevos (30 días)</span><strong>${s.leads_30d}</strong></div>
+        <button class="card stat stat-link" data-go-contacts><span>Contactos sin ${esc(V.appt.noun)} (30 días)</span><strong>${s.contacts_no_visit_30d ?? 0}</strong></button>
+        <div class="card stat"><span>${esc(V.appt.Plural)} ${agreePl("próxim")}</span><strong>${s.upcoming_appointments}</strong></div>
         <div class="card stat ${Number(s.overdue_followups) ? "is-alert" : ""}"><span>Seguimientos vencidos</span><strong>${s.overdue_followups}</strong></div>
       </div>
 
       <div class="grid-2">
         <section class="card">
-          <div class="card-head"><h2>Próximas visitas</h2><button class="btn btn-ghost btn-sm" data-go="agenda">Ver agenda</button></div>
+          <div class="card-head"><h2>${esc(cap(agreePl("próxim")))} ${esc(V.appt.plural)}</h2><button class="btn btn-ghost btn-sm" data-go="agenda">Ver agenda</button></div>
           <div class="list">
             ${upcoming.length ? upcoming.map((a) => `
               <button class="list-row" data-lead="${esc(a.lead_id || "")}">
                 <span class="time-col">${fmtTime(a.start_at)}</span>
                 <span class="list-row-main"><strong>${esc(a.student_name || a.adult_name || "Sin nombre")}</strong><span>${esc(fmtLongDay(a.start_at))} · ${esc(a.adult_name || "")}</span></span>
                 ${icon("chevron", "chevron")}
-              </button>`).join("") : '<div class="empty">No hay visitas agendadas.</div>'}
+              </button>`).join("") : `<div class="empty">No hay ${esc(V.appt.plural)} ${esc(agreePl("agendad"))}.</div>`}
           </div>
         </section>
 
@@ -454,7 +503,7 @@ async function loadOverview() {
 let pipelineMode = "board";
 
 async function loadPipeline() {
-  if (!view.querySelector(".pipeline, .contacts-list")) setLoading("Cargando candidatos…");
+  if (!view.querySelector(".pipeline, .contacts-list")) setLoading(`Cargando ${V.Leads.toLowerCase()}…`);
   try {
     const search = leadSearch.value.trim();
     const qs = (extra) => {
@@ -470,16 +519,16 @@ async function loadPipeline() {
 
     const toolbar = `
       <div class="agenda-toolbar">
-        <div class="segmented" role="tablist" aria-label="Vista de candidatos">
+        <div class="segmented" role="tablist" aria-label="Vista de ${esc(V.Leads.toLowerCase())}">
           <button role="tab" data-pmode="board" class="${pipelineMode === "board" ? "is-active" : ""}">Embudo</button>
-          <button role="tab" data-pmode="contacts" class="${pipelineMode === "contacts" ? "is-active" : ""}">Contactos sin visita${contacts.leads.length ? ` <span class="seg-count">${contacts.leads.length}</span>` : ""}</button>
+          <button role="tab" data-pmode="contacts" class="${pipelineMode === "contacts" ? "is-active" : ""}">Contactos sin ${esc(V.appt.noun)}${contacts.leads.length ? ` <span class="seg-count">${contacts.leads.length}</span>` : ""}</button>
         </div>
       </div>`;
 
     if (pipelineMode === "contacts") {
       view.innerHTML = `${toolbar}
         <section class="card contacts-list">
-          <div class="card-head"><div><h2>Contactos sin visita</h2><p>Familias que dejaron sus datos en el chat pero todavía no agendaron. Llamalas o escribiles.</p></div></div>
+          <div class="card-head"><div><h2>Contactos sin ${esc(V.appt.noun)}</h2><p>${isSchool() ? "Familias que dejaron sus datos en el chat pero todavía no agendaron. Llamalas o escribiles." : `Personas que dejaron sus datos en el chat pero todavía no reservaron. Llamalas o escribiles.`}</p></div></div>
           <div class="list">
             ${contacts.leads.length ? contacts.leads.map((lead) => {
               const wa = String(lead.phone || "").replace(/[^\d]/g, "");
@@ -497,7 +546,7 @@ async function loadPipeline() {
                   ${lead.email ? `<a class="icon-btn" href="mailto:${esc(lead.email)}" title="Correo" aria-label="Correo">${icon("mail")}</a>` : ""}
                 </span>
               </div>`;
-            }).join("") : '<div class="empty"><strong>Sin contactos pendientes</strong>Cuando una familia deje su teléfono o correo en el chat sin agendar, aparece acá.</div>'}
+            }).join("") : '<div class="empty"><strong>Sin contactos pendientes</strong>${isSchool() ? "Cuando una familia deje su teléfono o correo en el chat sin agendar, aparece acá." : "Cuando alguien deje su teléfono o correo en el chat sin reservar, aparece acá."}</div>'}
           </div>
         </section>`;
     } else {
@@ -515,12 +564,12 @@ async function loadPipeline() {
                   ${lead.student_name && lead.adult_name ? `<span>${esc(lead.adult_name)}</span>` : ""}
                   <span>${esc(lead.level_interest || (lead.capture_source && lead.capture_source !== "booking" ? CAPTURE_LABEL[lead.capture_source] || "Contacto" : "Nivel sin definir"))}</span>
                   <span class="lead-meta">
-                    ${lead.capture_source && lead.capture_source !== "booking" && !lead.next_appointment ? `<span class="pill pill-warning">Sin visita</span>` : ""}
-                    ${lead.next_appointment ? `<span class="pill pill-accent">Visita ${esc(fmtDay(lead.next_appointment))}</span>` : ""}
+                    ${lead.capture_source && lead.capture_source !== "booking" && !lead.next_appointment ? `<span class="pill pill-warning">Sin ${esc(V.appt.noun)}</span>` : ""}
+                    ${lead.next_appointment ? `<span class="pill pill-accent">${esc(V.appt.Noun)} ${esc(fmtDay(lead.next_appointment))}</span>` : ""}
                     ${lead.next_followup ? `<span class="pill ${new Date(lead.next_followup) < new Date() ? "pill-danger" : ""}">Seguimiento ${esc(fmtDay(lead.next_followup))}</span>` : ""}
                     ${lead.ai_interest_level ? `<span class="pill">Interés ${esc(INTEREST_LABEL[lead.ai_interest_level] || lead.ai_interest_level)}</span>` : ""}
                   </span>
-                </button>`).join("") || '<div class="stage-empty">Sin candidatos</div>'}
+                </button>`).join("") || `<div class="stage-empty">Sin ${esc(V.Leads.toLowerCase())}</div>`}
             </div>
           </section>`).join("")}
       </div>`;
@@ -567,7 +616,7 @@ function agendaRange() {
 
 function agendaTitle() {
   const range = agendaRange();
-  if (!range) return "Próximas visitas";
+  if (!range) return `${cap(agreePl("próxim"))} ${V.appt.plural}`;
   if (agendaMode === "month") return cap(fmtDate(range.first, { month: "long", year: "numeric" }));
   const end = addDays(range.from, 6);
   const sameMonth = range.from.getMonth() === end.getMonth();
@@ -635,7 +684,7 @@ function renderAgendaList(body, appointments) {
   appointments.forEach((a) => (groups[dayKey(a.start_at)] ||= []).push(a));
 
   if (!appointments.length) {
-    body.innerHTML = '<div class="card"><div class="empty"><strong>No hay visitas próximas</strong>Las visitas que agenden las familias desde el chat aparecen acá.</div></div>';
+    body.innerHTML = `<div class="card"><div class="empty"><strong>No hay ${esc(V.appt.plural)} ${esc(agreePl("próxim"))}</strong>${isSchool() ? "Las visitas que agenden las familias desde el chat aparecen acá." : `Las reservas que se hagan desde el chat aparecen acá.`}</div></div>`;
     return;
   }
 
@@ -649,7 +698,7 @@ function renderAgendaList(body, appointments) {
           return `
           <div class="list-row appt-row is-link" data-lead="${esc(a.lead_id || "")}">
             <span class="time-col">${fmtTime(a.start_at)}</span>
-            <span class="list-row-main"><strong>${esc(a.student_name || "Estudiante")}</strong><span>${esc(a.adult_name || "")}${a.phone ? ` · ${esc(a.phone)}` : ""}</span></span>
+            <span class="list-row-main"><strong>${esc(a.student_name || (isSchool() ? "Estudiante" : a.adult_name || V.Client))}</strong><span>${esc(a.adult_name || "")}${a.phone ? ` · ${esc(a.phone)}` : ""}</span></span>
             <span class="pill ${tone}">${esc(label)}</span>
             ${canEdit && open ? `<span class="appt-actions" data-stop>${apptActionButtons(a)}</span>` : ""}
           </div>`;
@@ -675,15 +724,15 @@ function wireApptActions(root, after) {
     const [label] = APPT_STATUS[status];
     if (status === "cancelled" || status === "no_show") {
       const ok = await confirmDialog(
-        status === "cancelled" ? "Se cancela la visita y se libera el horario." : "La visita queda marcada como no asistida.",
-        { title: status === "cancelled" ? "Cancelar visita" : "Marcar como no asistió", confirmLabel: status === "cancelled" ? "Cancelar visita" : "Marcar", danger: status === "cancelled" }
+        status === "cancelled" ? `Se cancela ${V.appt.the} y se libera el horario.` : `${cap(V.appt.the)} queda ${agree("marcad")} como no asistid${V.appt.pron === "la" ? "a" : "o"}.`,
+        { title: status === "cancelled" ? `Cancelar ${V.appt.noun}` : "Marcar como no asistió", confirmLabel: status === "cancelled" ? `Cancelar ${V.appt.noun}` : "Marcar", danger: status === "cancelled" }
       );
       if (!ok) return;
     }
     try {
       await post("/api/crm/appointments", { id: btn.dataset.appointment, status });
       after?.();
-      toast(`Visita marcada como ${label.toLowerCase()}.`);
+      toast(`${V.appt.Noun} ${agree("marcad")} como ${label.toLowerCase()}.`);
       loadAgenda();
       refreshBadges();
     } catch (error) { toast(error.message, { error: true }); }
@@ -697,14 +746,15 @@ function openAppointmentDialog(a) {
   const end = a.end_at ? ` – ${fmtTime(a.end_at)}` : "";
   const body = openDialog(`
     <div class="card-head">
-      <div><h2>${esc(a.student_name || "Visita")}</h2><p>${esc(cap(fmtLongDay(a.start_at)))} · ${fmtTime(a.start_at)}${end}</p></div>
+      <div><h2>${esc(a.student_name || (isSchool() ? "Visita" : a.adult_name || V.appt.Noun))}</h2><p>${esc(cap(fmtLongDay(a.start_at)))} · ${fmtTime(a.start_at)}${end}</p></div>
       <span class="pill ${tone}">${esc(label)}</span>
     </div>
     <div class="card-body">
       <dl class="facts">
-        <dt>Familia</dt><dd>${esc(a.adult_name || "—")}</dd>
+        <dt>${esc(V.Client)}</dt><dd>${esc(a.adult_name || "—")}</dd>
         <dt>Teléfono</dt><dd>${esc(a.phone || "—")}</dd>
         <dt>Correo</dt><dd>${esc(a.email || "—")}</dd>
+        ${a.notes ? `<dt>Detalle</dt><dd style="white-space:pre-line">${esc(a.notes)}</dd>` : ""}
       </dl>
       ${canEdit && open ? `<div class="appt-dialog-actions">${apptActionButtons(a)}</div>` : ""}
       <div class="form-actions">
@@ -766,8 +816,8 @@ function renderAgendaWeek(body, appointments, blocks, range) {
               ${(byDay[key] || []).map((a) => `
                 <button class="cal-event ${apptTone(a.status)} ${durationPx(a) < 44 ? "is-short" : ""}" data-appt="${esc(a.id)}" style="top:${top(a.start_at)}px;height:${durationPx(a)}px" title="${esc(`${fmtTime(a.start_at)} · ${a.student_name || ""} · ${a.adult_name || ""}`)}">
                   ${durationPx(a) < 44
-                    ? `<span class="cal-event-line"><b>${fmtTime(a.start_at)}</b> ${esc(a.student_name || a.adult_name || "Visita")}</span>`
-                    : `<strong>${esc(a.student_name || a.adult_name || "Visita")}</strong><span>${fmtTime(a.start_at)}${a.adult_name && a.student_name ? ` · ${esc(a.adult_name)}` : ""}</span>`}
+                    ? `<span class="cal-event-line"><b>${fmtTime(a.start_at)}</b> ${esc(a.student_name || a.adult_name || V.appt.Noun)}</span>`
+                    : `<strong>${esc(a.student_name || a.adult_name || V.appt.Noun)}</strong><span>${fmtTime(a.start_at)}${a.adult_name && a.student_name ? ` · ${esc(a.adult_name)}` : ""}</span>`}
                 </button>`).join("")}
               ${isToday && hoursOf(now) >= first && hoursOf(now) <= last ? `<div class="cal-now" style="top:${top(now)}px"></div>` : ""}
             </div>`;
@@ -775,7 +825,7 @@ function renderAgendaWeek(body, appointments, blocks, range) {
         </div>
       </div>
     </div>
-    ${appointments.length ? "" : '<p class="muted small" style="padding:0 4px">No hay visitas esta semana.</p>'}`;
+    ${appointments.length ? "" : `<p class="muted small" style="padding:0 4px">No hay ${esc(V.appt.plural)} esta semana.</p>`}`;
 
   const index = Object.fromEntries(appointments.map((a) => [a.id, a]));
   $$("[data-appt]", body).forEach((el) => el.addEventListener("click", () => openAppointmentDialog(index[el.dataset.appt])));
@@ -810,7 +860,7 @@ function renderAgendaMonth(body, appointments, range) {
             <span class="cal-cell-num">${d.getDate()}</span>
             <div class="cal-cell-events">
               ${items.slice(0, 3).map((a) => `
-                <button class="cal-chip ${apptTone(a.status)}" data-appt="${esc(a.id)}"><b>${fmtTime(a.start_at)}</b> ${esc(a.student_name || a.adult_name || "Visita")}</button>`).join("")}
+                <button class="cal-chip ${apptTone(a.status)}" data-appt="${esc(a.id)}"><b>${fmtTime(a.start_at)}</b> ${esc(a.student_name || a.adult_name || V.appt.Noun)}</button>`).join("")}
               ${items.length > 3 ? `<button class="cal-more" data-day-more="${key}">+${items.length - 3} más</button>` : ""}
             </div>
             ${items.length ? `<span class="cal-dot-count">${items.length}</span>` : ""}
@@ -941,7 +991,7 @@ async function loadKnowledge(editId = null) {
                   </span>` : ""}
                 </div>
               </article>`;
-            }).join("") || '<div class="empty"><strong>Todavía no hay información</strong>Agregá precios, horarios, niveles y todo lo que las familias suelen preguntar.</div>'}
+            }).join("") || `<div class="empty"><strong>Todavía no hay información</strong>${esc(V.knowledgeHint)}</div>`}
           </div>
         </section>
 
@@ -1072,7 +1122,7 @@ async function openLead(id) {
     const canEdit = currentManager?.role !== "viewer";
     const name = student.full_name || l.adult_name || "Sin nombre";
     const wa = String(l.phone || "").replace(/[^\d]/g, "");
-    $("#drawer-title").textContent = STAGE_LABEL[l.status] || "Candidato";
+    $("#drawer-title").textContent = STAGE_LABEL[l.status] || V.Lead;
 
     leadDetail.innerHTML = `
       <section class="card card-body">
@@ -1106,17 +1156,19 @@ async function openLead(id) {
           <dl class="facts">
             <dt>Correo</dt><dd>${esc(l.email || "—")}</dd>
             <dt>Teléfono</dt><dd>${esc(l.phone || "—")}</dd>
+            ${isSchool() ? `
             <dt>Fecha de nacimiento</dt><dd>${esc(student.birth_date ? fmtDate(`${String(student.birth_date).slice(0, 10)}T12:00:00`, { dateStyle: "long" }) : "—")}</dd>
             <dt>Institución anterior</dt><dd>${esc(student.previous_institution || "—")}</dd>
-            <dt>Comentarios</dt><dd>${esc(student.comments || "—")}</dd>
-            <dt>Cómo llegó</dt><dd>${esc(l.capture_source && l.capture_source !== "booking" ? `${CAPTURE_LABEL[l.capture_source] || "Contacto"}${l.capture_detail ? ` · ${l.capture_detail}` : ""}` : "Agendó una visita")}</dd>
-            <dt>Origen</dt><dd>${esc([l.utm_source, l.utm_medium, l.utm_campaign].filter(Boolean).join(" / ") || l.source || "—")}</dd>
+            <dt>Comentarios</dt><dd>${esc(student.comments || "—")}</dd>` : (data.appointments.find((a) => a.notes) ? `
+            <dt>Detalle de la reserva</dt><dd style="white-space:pre-line">${esc(data.appointments.find((a) => a.notes).notes)}</dd>` : "")}
+            <dt>Cómo llegó</dt><dd>${esc(l.capture_source && l.capture_source !== "booking" ? `${CAPTURE_LABEL[l.capture_source] || "Contacto"}${l.capture_detail ? ` · ${l.capture_detail}` : ""}` : isSchool() ? "Agendó una visita" : `Reservó ${V.appt.a}`)}</dd>
+            <dt>Origen</dt><dd>${esc([l.utm_source, l.utm_medium, l.utm_campaign].filter(Boolean).join(" / ") || (CAPTURE_LABEL[l.source] ? "chat" : l.source) || "—")}</dd>
           </dl>
         </div>
       </section>
 
       <section class="card">
-        <div class="card-head"><div><h2>Lectura de la IA</h2><p>Ayuda interna. No se muestra a la familia.</p></div>${canEdit ? `<button id="analyze-lead" class="btn btn-secondary btn-sm">${icon("sparkle")}${l.ai_analyzed_at ? "Actualizar" : "Analizar"}</button>` : ""}</div>
+        <div class="card-head"><div><h2>Lectura de la IA</h2><p>Ayuda interna. No se muestra ${isSchool() ? "a la familia" : `al ${V.client}`}.</p></div>${canEdit ? `<button id="analyze-lead" class="btn btn-secondary btn-sm">${icon("sparkle")}${l.ai_analyzed_at ? "Actualizar" : "Analizar"}</button>` : ""}</div>
         <div class="card-body">
           ${l.ai_summary ? `
           <dl class="facts">
@@ -1129,12 +1181,12 @@ async function openLead(id) {
       </section>
 
       <section class="card">
-        <div class="card-head"><h2>Visitas y seguimientos</h2></div>
+        <div class="card-head"><h2>${esc(V.appt.Plural)} y seguimientos</h2></div>
         <div class="card-body">
           <div class="timeline">
-            ${data.appointments.map((a) => `<div class="timeline-item"><time>${esc(fmtDate(a.start_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }))}</time><span>Visita · ${esc((APPT_STATUS[a.status] || [a.status])[0])}</span></div>`).join("")}
+            ${data.appointments.map((a) => `<div class="timeline-item"><time>${esc(fmtDate(a.start_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }))}</time><span>${esc(V.appt.Noun)} · ${esc((APPT_STATUS[a.status] || [a.status])[0])}</span></div>`).join("")}
             ${data.followups.map((f) => `<div class="timeline-item"><time>${esc(fmtDate(f.due_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }))}</time><span>${esc(f.title)} · ${f.status === "pending" ? "pendiente" : "hecho"}</span></div>`).join("")}
-            ${!data.appointments.length && !data.followups.length ? '<p class="muted">Sin visitas ni seguimientos.</p>' : ""}
+            ${!data.appointments.length && !data.followups.length ? `<p class="muted">Sin ${esc(V.appt.plural)} ni seguimientos.</p>` : ""}
           </div>
           ${canEdit ? `
           <div class="form-grid">
@@ -1288,7 +1340,7 @@ async function renderStartTab(panel) {
     <section class="card">
       <div class="card-head">
         <div><h2>${allDone ? "Todo listo" : "Dejá el panel funcionando"}</h2>
-        <p>${allDone ? "El asistente está respondiendo y agendando visitas." : `${done} de ${required.length} pasos obligatorios completos.`}</p></div>
+        <p>${allDone ? `El asistente está respondiendo y agendando ${V.appt.plural}.` : `${done} de ${required.length} pasos obligatorios completos.`}</p></div>
       </div>
       <div class="checklist">
         ${checklist.map((c) => `
@@ -1302,7 +1354,7 @@ async function renderStartTab(panel) {
     <section class="card">
       <div class="card-head"><h2>Enlaces para compartir</h2></div>
       <div class="card-body">
-        <div class="field"><span class="field-label">Chat público para las familias</span>
+        <div class="field"><span class="field-label">Chat público para ${isSchool() ? "las familias" : `tus ${V.clients}`}</span>
           <div class="form-actions" style="justify-content:flex-start">
             <span class="copy-value">${esc(location.origin)}/</span>
             <button class="btn btn-ghost btn-sm" data-copy="${esc(location.origin)}/">${icon("copy")}Copiar</button>
@@ -1333,16 +1385,20 @@ async function renderBusinessTab(panel) {
       <section class="card">
         <div class="card-head"><div><h2>Identidad</h2><p>Se muestra en el encabezado del chat y en la ficha del negocio.</p></div></div>
         <div class="card-body form-grid">
+          <label class="field span-2"><span>Tipo de negocio</span>
+            <select name="businessType" ${dis}>${(BUSINESS_TYPES.length ? BUSINESS_TYPES : [{ key: "school", label: "Colegio o institución educativa" }]).map((t) => `<option value="${esc(t.key)}" ${t.key === (p.businessType || "school") ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>
+            <small>Adapta el chat, el formulario de reserva, las etapas del panel y cómo se comporta el asistente.</small>
+          </label>
           <label class="field"><span>Nombre</span><input name="name" value="${esc(p.name || "")}" required maxlength="160" ${dis}></label>
           <label class="field"><span>Categoría</span><input name="category" value="${esc(p.category || "")}" maxlength="120" placeholder="Educación" ${dis}></label>
-          <label class="field span-2"><span>Descripción corta</span><input name="shortDescription" value="${esc(p.shortDescription || "")}" maxlength="260" placeholder="Ej. Inicial y Primaria" ${dis}></label>
-          <label class="field span-2"><span>Mensaje destacado</span><input name="statusText" value="${esc(p.statusText || "")}" maxlength="160" placeholder="Ej. Inscripciones abiertas 2027" ${dis}></label>
+          <label class="field span-2"><span>Descripción corta</span><input name="shortDescription" value="${esc(p.shortDescription || "")}" maxlength="260" placeholder="${isSchool() ? "Ej. Inicial y Primaria" : "Ej. Turnos online de lunes a sábado"}" ${dis}></label>
+          <label class="field span-2"><span>Mensaje destacado</span><input name="statusText" value="${esc(p.statusText || "")}" maxlength="160" placeholder="${isSchool() ? "Ej. Inscripciones abiertas 2027" : "Ej. Agenda abierta para diciembre"}" ${dis}></label>
           <label class="check-row span-2"><input type="checkbox" name="badgeEnabled" ${p.badgeEnabled !== false ? "checked" : ""} ${dis}>Mostrar sello de perfil verificado</label>
         </div>
       </section>
 
       <section class="card">
-        <div class="card-head"><div><h2>Marca</h2><p>Logo y colores que ven las familias en el chat.</p></div></div>
+        <div class="card-head"><div><h2>Marca</h2><p>Logo y colores que ${isSchool() ? "ven las familias" : `ven tus ${V.clients}`} en el chat.</p></div></div>
         <div class="card-body">
           <div class="logo-field">
             <img id="logo-preview" class="logo-preview" alt="Logo actual" src="${esc(p.logoUrl || initialsLogo(p.name, p.brandColor || DEFAULT_BRAND))}">
@@ -1455,8 +1511,10 @@ async function renderBusinessTab(panel) {
     }
     try {
       await withBusy($("button[type=submit]", form), "Guardando…", () => saveSettings({ profile }));
+      const typeChanged = profile.businessType && profile.businessType !== (p.businessType || "school");
       toast("Datos del negocio guardados.");
-      loadBrand();
+      await loadBrand();
+      if (typeChanged) location.reload();
     } catch (error) { toast(error.message, { error: true }); }
   });
 }
@@ -1515,17 +1573,17 @@ async function renderBookingTab(panel) {
 
   panel.innerHTML = `
     <form id="booking-form" class="card">
-      <div class="card-head"><div><h2>Horarios para visitas</h2><p>Lo que el chat ofrece a las familias.</p></div></div>
+      <div class="card-head"><div><h2>Horarios para ${esc(V.appt.plural)}</h2><p>Lo que el chat ofrece a ${isSchool() ? "las familias" : `tus ${V.clients}`}.</p></div></div>
       <div class="card-body">
         <div class="form-grid">
           <label class="field"><span>Primer horario</span><select name="openHour" ${dis}>${hourOptions(b.openHour ?? 9, 0, 23)}</select></label>
           <label class="field"><span>Último horario</span><select name="closeHour" ${dis}>${hourOptions(b.closeHour ?? 16, 0, 23)}</select></label>
-          <label class="field"><span>Duración de cada visita</span><select name="slotMinutes" ${dis}>${[15, 20, 30, 45, 60].map((v) => `<option value="${v}" ${Number(b.slotMinutes || 30) === v ? "selected" : ""}>${v} minutos</option>`).join("")}</select></label>
+          <label class="field"><span>Duración de cada ${esc(V.appt.noun)}</span><select name="slotMinutes" ${dis}>${[15, 20, 30, 45, 60].map((v) => `<option value="${v}" ${Number(b.slotMinutes || 30) === v ? "selected" : ""}>${v} minutos</option>`).join("")}</select></label>
           <label class="field"><span>Anticipación mínima</span><select name="minDaysAhead" ${dis}>${[0, 1, 2, 3, 5, 7].map((v) => `<option value="${v}" ${Number(b.minDaysAhead ?? 1) === v ? "selected" : ""}>${v === 0 ? "Mismo día" : v === 1 ? "1 día" : `${v} días`}</option>`).join("")}</select></label>
           <label class="field"><span>Mostrar hasta</span><input name="maxDaysAhead" type="number" min="1" max="180" value="${esc(b.maxDaysAhead ?? 30)}" ${dis}><small>Días hacia adelante.</small></label>
-          <label class="field"><span>Seguimiento después de la visita</span><input name="daysAfterInterview" type="number" min="0" max="60" value="${esc(f.daysAfterInterview ?? 2)}" ${dis}><small>Días hasta crear la tarea de seguimiento.</small></label>
+          <label class="field"><span>Seguimiento después ${isSchool() ? "de la visita" : esc(V.appt.of || `de ${V.appt.the}`)}</span><input name="daysAfterInterview" type="number" min="0" max="60" value="${esc(f.daysAfterInterview ?? 2)}" ${dis}><small>Días hasta crear la tarea de seguimiento.</small></label>
         </div>
-        <div class="field"><span class="field-label">Días con visitas</span>${weekdayChips("bookingDays", b.weekdays || [1, 2, 3, 4, 5], dis)}</div>
+        <div class="field"><span class="field-label">Días con ${esc(V.appt.plural)}</span>${weekdayChips("bookingDays", b.weekdays || [1, 2, 3, 4, 5], dis)}</div>
       </div>
       ${editable ? '<div class="card-foot form-actions"><button type="submit" class="btn btn-primary">Guardar cambios</button></div>' : ""}
     </form>
@@ -1600,12 +1658,16 @@ async function renderBookingTab(panel) {
 }
 
 /* Captación */
-const CAPTURE_OPTIONS = [
-  ["contactOffer", "Ofrecer enviar información", "Cuando la familia muestra interés pero no agenda, el asistente ofrece que Admisiones le escriba por WhatsApp o correo."],
-  ["vacancyAlerts", "Aviso de vacantes", "Si pregunta por cupos, inscripciones o el año próximo, el asistente ofrece avisarle cuando haya novedades."],
+const captureOptions = () => [
+  ["contactOffer", "Ofrecer enviar información", isSchool()
+    ? "Cuando la familia muestra interés pero no agenda, el asistente ofrece que Admisiones le escriba por WhatsApp o correo."
+    : `Cuando alguien muestra interés pero no reserva, el asistente ofrece que ${V.team} le escriba por WhatsApp o correo.`],
+  ["vacancyAlerts", V.vacancyOption[0], V.vacancyOption[1]],
   ["brochure", "Folleto", "Si pide más detalle, el asistente ofrece el folleto: se descarga en el chat y se envía por correo."],
   ["callback", "Que lo llamen", "Si prefiere hablar con una persona, deja su teléfono y el mejor horario para llamarlo."],
-  ["autoDetect", "Detectar teléfonos y correos", "Si la familia escribe su teléfono o correo en la conversación, se registra como candidato automáticamente."]
+  ["autoDetect", "Detectar teléfonos y correos", isSchool()
+    ? "Si la familia escribe su teléfono o correo en la conversación, se registra como candidato automáticamente."
+    : `Si escribe su teléfono o correo en la conversación, se registra como ${V.lead} automáticamente.`]
 ];
 
 function fmtBytes(bytes) {
@@ -1620,18 +1682,18 @@ async function renderCaptureTab(panel) {
 
   panel.innerHTML = `
     <form id="capture-form" class="card">
-      <div class="card-head"><div><h2>Captación de contactos</h2><p>Formas de quedarte con el contacto de las familias que todavía no agendan una visita. Aparecen en Candidatos → Contactos sin visita, con una tarea de seguimiento.</p></div></div>
+      <div class="card-head"><div><h2>Captación de contactos</h2><p>${isSchool() ? "Formas de quedarte con el contacto de las familias que todavía no agendan una visita." : `Formas de quedarte con el contacto de quienes todavía no reservan ${V.appt.a}.`} Aparecen en ${esc(V.Leads)} → Contactos sin ${esc(V.appt.noun)}, con una tarea de seguimiento.</p></div></div>
       <div class="list">
-        ${CAPTURE_OPTIONS.map(([key, label, help]) => `
+        ${captureOptions().map(([key, label, help]) => `
           <label class="list-row capture-option">
             <span class="list-row-main"><strong>${label}</strong><span>${help}</span></span>
             <span class="switch"><input type="checkbox" name="${key}" ${capture[key] !== false ? "checked" : ""} ${dis}><span class="track"></span></span>
           </label>`).join("")}
       </div>
       <div class="card-body">
-        <label class="field"><span>Novedades de inscripción</span>
-          <textarea name="vacancyText" rows="2" maxlength="400" placeholder="Ej. Las inscripciones para 2027 abren el 1 de noviembre. Quedan pocos lugares en Inicial 4." ${dis}>${esc(capture.vacancyText || "")}</textarea>
-          <small>Opcional. El asistente lo usa al hablar de vacantes e inscripciones.</small>
+        <label class="field"><span>${esc(V.vacancyTextLabel)}</span>
+          <textarea name="vacancyText" rows="2" maxlength="400" placeholder="${esc(V.vacancyTextPlaceholder)}" ${dis}>${esc(capture.vacancyText || "")}</textarea>
+          <small>${esc(V.vacancyTextHelp)}</small>
         </label>
       </div>
       ${editable ? '<div class="card-foot form-actions"><button type="submit" class="btn btn-primary">Guardar cambios</button></div>' : ""}
@@ -1663,7 +1725,7 @@ async function renderCaptureTab(panel) {
   $("#capture-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
-    const values = Object.fromEntries(CAPTURE_OPTIONS.map(([key]) => [key, form.elements[key].checked]));
+    const values = Object.fromEntries(captureOptions().map(([key]) => [key, form.elements[key].checked]));
     values.vacancyText = form.elements.vacancyText.value;
     values.brochureUrl = $("[name=brochureUrl]")?.value || "";
     try {

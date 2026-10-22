@@ -2,6 +2,7 @@ const { withTransaction, query } = require("../../lib/db");
 const { validateSlot, ZONE } = require("../../lib/scheduling");
 const { queueAndTrySend, getNotifyEmail } = require("../../lib/email");
 const { getProfile } = require("../../lib/profile");
+const { vocabFor } = require("../../lib/business-types");
 const { DateTime } = require("luxon");
 const { createCalendarEvent } = require("../../lib/google-calendar");
 const {
@@ -41,21 +42,41 @@ module.exports = async (req, res) => {
       birthDate,
       previousInstitution,
       comments,
+      documentId,
+      insurance,
+      reason,
+      service,
       privacyConsent,
       utmSource,
       utmMedium,
       utmCampaign
     } = req.body || {};
 
-    const required = { startAt, adultName, email, phone, studentName, birthDate };
+    const profile = await getProfile();
+    const isSchool = profile.businessType === "school";
+    const words = vocabFor(profile.businessType, profile.name).appt;
+
+    // Schools register the student; other businesses only the person booking.
+    const required = isSchool
+      ? { startAt, adultName, email, phone, studentName, birthDate }
+      : { startAt, adultName, email, phone };
     const missing = Object.entries(required).filter(([, value]) => !clean(value)).map(([key]) => key);
     if (missing.length) {
-      return res.status(400).json({ success: false, message: "Faltan datos obligatorios para confirmar la visita." });
+      return res.status(400).json({ success: false, message: isSchool ? "Faltan datos obligatorios para confirmar la visita." : `Faltan datos obligatorios para confirmar ${words.the}.` });
     }
 
     if (privacyConsent !== true && privacyConsent !== "true") {
-      return res.status(400).json({ success: false, message: "Necesitamos tu autorización para gestionar los datos de admisión." });
+      return res.status(400).json({ success: false, message: isSchool ? "Necesitamos tu autorización para gestionar los datos de admisión." : "Necesitamos tu autorización para gestionar tus datos." });
     }
+
+    // Extra details for non-school bookings, kept on the appointment.
+    const bookingNotes = isSchool ? null : [
+      clean(service, 200) && `Servicio: ${clean(service, 200)}`,
+      clean(reason, 300) && `Motivo: ${clean(reason, 300)}`,
+      clean(documentId, 40) && `Documento: ${clean(documentId, 40)}`,
+      clean(insurance, 120) && `Cobertura: ${clean(insurance, 120)}`,
+      clean(comments, 1000) && `Comentarios: ${clean(comments, 1000)}`
+    ].filter(Boolean).join("\n") || null;
 
     if (!/^\S+@\S+\.\S+$/.test(clean(email, 200))) {
       return res.status(400).json({ success: false, message: "El correo electrónico no parece válido." });
@@ -66,7 +87,7 @@ module.exports = async (req, res) => {
       return res.status(409).json({ success: false, message: slot.reason });
     }
 
-    const levelInterest = inferLevel(birthDate);
+    const levelInterest = isSchool ? inferLevel(birthDate) : null;
 
     const created = await withTransaction(async (client) => {
       const lockKey = Math.abs(
@@ -146,28 +167,31 @@ module.exports = async (req, res) => {
         lead = inserted.rows[0];
       }
 
-      const studentResult = await client.query(
-        `INSERT INTO students
-           (lead_id, full_name, birth_date, previous_institution, comments, level_interest)
-         VALUES ($1,$2,$3,$4,$5,$6)
-         RETURNING *`,
-        [
-          lead.id,
-          clean(studentName, 200),
-          birthDate,
-          clean(previousInstitution, 250) || null,
-          clean(comments, 1500) || null,
-          levelInterest
-        ]
-      );
-      const student = studentResult.rows[0];
+      let student = null;
+      if (isSchool) {
+        const studentResult = await client.query(
+          `INSERT INTO students
+             (lead_id, full_name, birth_date, previous_institution, comments, level_interest)
+           VALUES ($1,$2,$3,$4,$5,$6)
+           RETURNING *`,
+          [
+            lead.id,
+            clean(studentName, 200),
+            birthDate,
+            clean(previousInstitution, 250) || null,
+            clean(comments, 1500) || null,
+            levelInterest
+          ]
+        );
+        student = studentResult.rows[0];
+      }
 
       const appointmentResult = await client.query(
         `INSERT INTO appointments
-           (lead_id, student_id, start_at, end_at, status, source)
-         VALUES ($1,$2,$3,$4,'scheduled','chat')
+           (lead_id, student_id, start_at, end_at, status, source, notes)
+         VALUES ($1,$2,$3,$4,'scheduled','chat',$5)
          RETURNING *`,
-        [lead.id, student.id, slot.start.toUTC().toISO(), slot.end.toUTC().toISO()]
+        [lead.id, student?.id || null, slot.start.toUTC().toISO(), slot.end.toUTC().toISO(), bookingNotes]
       );
       const appointment = appointmentResult.rows[0];
 
@@ -184,7 +208,7 @@ module.exports = async (req, res) => {
          VALUES ($1,'appointment_scheduled',$2,$3::jsonb)`,
         [
           lead.id,
-          `Visita agendada para ${slot.start.setLocale("es").toFormat("dd/LL/yyyy HH:mm")}.`,
+          `${isSchool ? "Visita agendada" : `${words.Noun} ${words.scheduled}`} para ${slot.start.setLocale("es").toFormat("dd/LL/yyyy HH:mm")}.`,
           JSON.stringify({ appointmentId: appointment.id })
         ]
       );
@@ -193,20 +217,25 @@ module.exports = async (req, res) => {
     });
 
     const localStart = DateTime.fromJSDate(new Date(created.appointment.start_at), { zone: "utc" }).setZone(ZONE);
-    const [admissionsEmail, profile] = await Promise.all([getNotifyEmail(), getProfile()]);
+    const admissionsEmail = await getNotifyEmail();
     const address = [profile.addressLine1, profile.addressLine2].filter(Boolean).join(", ");
 
     try {
       const calendarEvent = await createCalendarEvent({
         startISO: localStart.toISO(),
         endISO: DateTime.fromJSDate(new Date(created.appointment.end_at), { zone: "utc" }).setZone(ZONE).toISO(),
-        summary: `Visita de admisión · ${created.student.full_name}`,
-        description: [
+        summary: isSchool ? `Visita de admisión · ${created.student.full_name}` : `${words.Noun} · ${created.lead.adult_name}`,
+        description: (isSchool ? [
           `Adulto responsable: ${created.lead.adult_name}`,
           `Teléfono: ${created.lead.phone}`,
           `Correo: ${created.lead.email}`,
           `Institución anterior: ${created.student.previous_institution || "No indicada"}`
-        ].join("\n"),
+        ] : [
+          `Nombre: ${created.lead.adult_name}`,
+          `Teléfono: ${created.lead.phone}`,
+          `Correo: ${created.lead.email}`,
+          bookingNotes || ""
+        ]).filter(Boolean).join("\n"),
         attendeeEmail: created.lead.email
       });
 
@@ -225,7 +254,7 @@ module.exports = async (req, res) => {
       );
     }
 
-    const schoolBody = [
+    const schoolBody = isSchool ? [
       "Nueva visita agendada desde AdmisIA",
       "",
       `Fecha: ${localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")}`,
@@ -236,14 +265,24 @@ module.exports = async (req, res) => {
       `Fecha de nacimiento: ${created.student.birth_date}`,
       `Institución de procedencia: ${created.student.previous_institution || "No indicada"}`,
       `Comentarios: ${created.student.comments || "Sin comentarios adicionales"}`
-    ].join("\n");
+    ].join("\n") : [
+      `Nueva reserva desde el chat: ${words.noun}`,
+      "",
+      `Fecha: ${localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")}`,
+      `Nombre: ${created.lead.adult_name}`,
+      `Correo: ${created.lead.email}`,
+      `Teléfono: ${created.lead.phone}`,
+      bookingNotes || ""
+    ].filter(Boolean).join("\n");
 
     if (admissionsEmail) {
       await queueAndTrySend({
         leadId: created.lead.id,
         appointmentId: created.appointment.id,
         recipient: admissionsEmail,
-        subject: `Nueva visita · ${created.student.full_name} · ${localStart.toFormat("dd/LL HH:mm")}`,
+        subject: isSchool
+          ? `Nueva visita · ${created.student.full_name} · ${localStart.toFormat("dd/LL HH:mm")}`
+          : `Nueva reserva · ${created.lead.adult_name} · ${localStart.toFormat("dd/LL HH:mm")}`,
         bodyText: schoolBody
       });
     }
@@ -251,18 +290,18 @@ module.exports = async (req, res) => {
     const familyBody = [
       `Hola ${created.lead.adult_name},`,
       "",
-      `Tu visita a ${profile.name} quedó registrada.`,
+      isSchool ? `Tu visita a ${profile.name} quedó registrada.` : `${words.your.charAt(0).toUpperCase() + words.your.slice(1)} en ${profile.name} quedó registrad${words.pron === "la" ? "a" : "o"}.`,
       `Fecha y hora: ${localStart.setLocale("es").toFormat("cccc dd/LL/yyyy 'a las' HH:mm")}`,
       address ? `Dirección: ${address}.` : "",
       "",
-      "El equipo de Admisiones podrá contactarte si necesita confirmar algún detalle."
+      `El equipo de ${vocabFor(profile.businessType).team} podrá contactarte si necesita confirmar algún detalle.`
     ].join("\n");
 
     await queueAndTrySend({
       leadId: created.lead.id,
       appointmentId: created.appointment.id,
       recipient: created.lead.email,
-      subject: `Confirmación de visita · ${profile.name}`,
+      subject: `Confirmación ${isSchool ? "de visita" : words.of} · ${profile.name}`,
       bodyText: familyBody
     });
 
@@ -272,7 +311,9 @@ module.exports = async (req, res) => {
       req,
       res,
       "assistant",
-      `Visita confirmada para el ${display}. Si necesitás cambiarla o cancelarla, podés hacerlo desde este mismo chat.`,
+      isSchool
+        ? `Visita confirmada para el ${display}. Si necesitás cambiarla o cancelarla, podés hacerlo desde este mismo chat.`
+        : `${words.confirmed} para el ${display}. Si necesitás cambiar${words.pron} o cancelar${words.pron}, podés hacerlo desde este mismo chat.`,
       created.lead.id
     );
 
@@ -283,7 +324,7 @@ module.exports = async (req, res) => {
         startAt: created.appointment.start_at,
         endAt: created.appointment.end_at,
         status: created.appointment.status,
-        studentName: created.student.full_name,
+        studentName: created.student?.full_name || null,
         display
       }
     });

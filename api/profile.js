@@ -1,5 +1,6 @@
 const { getProfile } = require("../lib/profile");
 const { getBrochureFile } = require("../lib/capture");
+const { vocabFor, typeOptions } = require("../lib/business-types");
 
 module.exports = async (req, res) => {
   if (req.method !== "GET") {
@@ -26,5 +27,10 @@ module.exports = async (req, res) => {
 
   const profile = await getProfile();
   res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
-  return res.status(200).json({ success: true, profile });
+  return res.status(200).json({
+    success: true,
+    profile,
+    vocab: vocabFor(profile.businessType, profile.name),
+    businessTypes: typeOptions()
+  });
 };

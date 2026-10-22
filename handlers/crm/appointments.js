@@ -3,6 +3,8 @@ const { query, withTransaction } = require("../../lib/db");
 const { requireManager } = require("../../lib/auth");
 const { ZONE } = require("../../lib/scheduling");
 const { updateCalendarEventStatus } = require("../../lib/google-calendar");
+const { getProfile } = require("../../lib/profile");
+const { vocabFor } = require("../../lib/business-types");
 
 const VALID = new Set(["scheduled","confirmed","completed","no_show","cancelled"]);
 
@@ -47,6 +49,13 @@ module.exports = async (req, res) => {
         2
       );
 
+      const profile = await getProfile();
+      const isSchool = profile.businessType === "school";
+      const followupTitles = {
+        completed: isSchool ? "Contactar a la familia luego de la entrevista" : `Contactar luego ${vocabFor(profile.businessType).appt.of}`,
+        noShow: isSchool ? "Contactar a la familia por inasistencia" : "Contactar por inasistencia"
+      };
+
       const updated = await withTransaction(async (client) => {
         const current = await client.query("SELECT * FROM appointments WHERE id=$1 FOR UPDATE", [id]);
         const appointment = current.rows[0];
@@ -77,9 +86,9 @@ module.exports = async (req, res) => {
           await client.query(
             `INSERT INTO followups
                (lead_id, appointment_id, assigned_manager_id, type, title, due_at)
-             VALUES ($1,$2,$3,'post_interview','Contactar a la familia luego de la entrevista',$4)
+             VALUES ($1,$2,$3,'post_interview',$5,$4)
              ON CONFLICT DO NOTHING`,
-            [appointment.lead_id, appointment.id, manager.sub, due.toUTC().toISO()]
+            [appointment.lead_id, appointment.id, manager.sub, due.toUTC().toISO(), followupTitles.completed]
           );
           await client.query(
             "UPDATE leads SET status='followup', next_action_at=$2, updated_at=now() WHERE id=$1",
@@ -92,8 +101,8 @@ module.exports = async (req, res) => {
           await client.query(
             `INSERT INTO followups
                (lead_id, appointment_id, assigned_manager_id, type, title, due_at)
-             VALUES ($1,$2,$3,'no_show','Contactar a la familia por inasistencia',$4)`,
-            [appointment.lead_id, appointment.id, manager.sub, due.toUTC().toISO()]
+             VALUES ($1,$2,$3,'no_show',$5,$4)`,
+            [appointment.lead_id, appointment.id, manager.sub, due.toUTC().toISO(), followupTitles.noShow]
           );
           await client.query(
             "UPDATE leads SET next_action_at=$2, updated_at=now() WHERE id=$1",

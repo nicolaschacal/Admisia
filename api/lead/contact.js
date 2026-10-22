@@ -1,4 +1,5 @@
 const { getProfile } = require("../../lib/profile");
+const { vocabFor } = require("../../lib/business-types");
 const { persistVisitorMessage } = require("../../lib/visitor-session");
 const { analyzeLead } = require("../../lib/lead-ai");
 const {
@@ -17,16 +18,17 @@ function firstName(name) {
   return String(name || "").trim().split(/\s+/)[0] || "";
 }
 
-function confirmation(reason, { name, brochureLink, hasEmail }) {
+function confirmation(reason, { name, brochureLink, hasEmail, vocab }) {
   const hi = firstName(name) ? `Gracias, ${firstName(name)}.` : "Gracias.";
+  const team = vocab.team;
   switch (reason) {
-    case "callback": return `${hi} Le pasé tu pedido al equipo de Admisiones y te van a llamar en el horario que elegiste.`;
-    case "vacancy": return `${hi} Quedaste anotado: te avisamos apenas haya novedades de vacantes e inscripciones.`;
+    case "callback": return `${hi} Le pasé tu pedido al equipo de ${team} y te van a llamar en el horario que elegiste.`;
+    case "vacancy": return `${hi} ${vocab.vacancyConfirm}`;
     case "brochure":
       return brochureLink
         ? `${hi} ${hasEmail ? "Te mandé el folleto por correo y también" : "Te"} lo dejo acá para que lo descargues.`
-        : `${hi} El equipo de Admisiones te va a enviar el folleto.`;
-    default: return `${hi} El equipo de Admisiones te va a escribir con la información. Mientras tanto, podés seguir preguntándome lo que necesites.`;
+        : `${hi} El equipo de ${team} te va a enviar el folleto.`;
+    default: return `${hi} El equipo de ${team} te va a escribir con la información. Mientras tanto, podés seguir preguntándome lo que necesites.`;
   }
 }
 
@@ -76,7 +78,7 @@ module.exports = async (req, res) => {
       reason === "brochure" ? getBrochureLink(req, settings) : ""
     ]);
 
-    const message = confirmation(reason, { name, brochureLink, hasEmail: Boolean(captured.lead.email) });
+    const message = confirmation(reason, { name, brochureLink, hasEmail: Boolean(captured.lead.email), vocab: vocabFor(profile.businessType, profile.name) });
 
     await Promise.allSettled([
       persistVisitorMessage(req, res, "assistant", message, captured.lead.id),
