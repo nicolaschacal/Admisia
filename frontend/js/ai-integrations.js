@@ -2,37 +2,49 @@
   const original = window.renderIntegrationsTab;
   const healthPill = (label, item) => {
     if (!item || item.status === "not_configured") return `<span class="pill">${label}: Sin configurar</span>`;
-    return `<span class="pill ${item.status === "healthy" ? "pill-success" : "pill-danger"}">${label}: ${item.status === "healthy" ? `Operativo · ${item.latencyMs} ms` : `Fallo · ${esc(item.message || "Error")}`}</span>`;
+    if (item.status === "unknown") return `<span class="pill">${label}: Sin comprobación reciente</span>`;
+    return `<span class="pill ${item.status === "healthy" ? "pill-success" : "pill-danger"}">${label}: ${item.status === "healthy" ? `Operativo · ${item.latencyMs ?? "—"} ms` : `Fallo · ${esc(item.message || item.lastError || "Error")}`}</span>`;
   };
   const providerLabel = { gemini: "Google Gemini", openai: "OpenAI / ChatGPT", anthropic: "Anthropic / Claude", custom: "Otro proveedor (OpenAI-compatible)" };
+
+  function renderHealth(panel, liveHealth, history = {}) {
+    const box = $("[data-ai-health]", panel);
+    const primary = history.primary?.status && history.primary.status !== "unknown" ? history.primary : liveHealth?.primary;
+    const secondary = history.secondary?.status && history.secondary.status !== "unknown" ? history.secondary : liveHealth?.secondary;
+    if (box) box.innerHTML = `${healthPill("Principal", primary)} ${healthPill("Secundario", secondary)}`;
+    const alert = $("[data-ai-alert]", panel);
+    const active = [history.primary, history.secondary].filter((item) => item?.alertActive);
+    if (!alert) return;
+    if (active.length) {
+      alert.hidden = false;
+      alert.innerHTML = active.map((item) => {
+        const label = item.slot === "primary" ? "modelo principal" : "modelo secundario";
+        return `<strong>Alerta: ${label} con fallos consecutivos.</strong> Se registraron ${Number(item.consecutiveFailures || 0)} fallos consecutivos en una ventana de 10 minutos. Último error: ${esc(item.lastError || "Error no especificado")}.`;
+      }).join("<br>");
+      alert.classList.add("is-error");
+      return;
+    }
+    alert.hidden = true;
+    alert.classList.remove("is-error");
+    const errors = [history.primary, history.secondary].filter((item) => item?.status === "error");
+    if (errors.length) {
+      alert.hidden = false;
+      alert.textContent = "Se detectó un fallo reciente, pero todavía no alcanza el umbral de 3 fallos consecutivos en 10 minutos. El estado se actualizará con las próximas solicitudes o al volver a comprobar.";
+    }
+  }
+
+  async function loadHealth(panel) {
+    try {
+      const data = await api("/api/crm/integrations");
+      renderHealth(panel, null, data.integrations.ai.health || {});
+    } catch (error) { console.error("AI health status:", error); }
+  }
 
   async function health(panel) {
     try {
       const data = await post("/api/crm/integrations", { action: "health", section: "ai", values: {} });
-      const box = $("[data-ai-health]", panel);
-      if (box) box.innerHTML = `${healthPill("Principal", data.health.primary)} ${healthPill("Secundario", data.health.secondary)}`;
-      const alert = $("[data-ai-alert]", panel);
-      const history = data.history || {};
-      const active = [history.primary, history.secondary].filter((item) => item?.alertActive);
-      if (alert) {
-        if (active.length) {
-          alert.hidden = false;
-          alert.innerHTML = active.map((item) => {
-            const label = item.slot === "primary" ? "modelo principal" : "modelo secundario";
-            return `<strong>Alerta: ${label} con fallos consecutivos.</strong> Se registraron ${Number(item.consecutiveFailures || 0)} fallos en los últimos 10 minutos. Último error: ${esc(item.lastError || "Error no especificado")}.`;
-          }).join("<br>");
-          alert.classList.add("is-error");
-        } else {
-          alert.hidden = true;
-          alert.classList.remove("is-error");
-          const errors = [history.primary, history.secondary].filter((item) => item?.status === "error");
-          if (errors.length) {
-            alert.hidden = false;
-            alert.textContent = "Se detectó un fallo reciente, pero todavía no alcanza el umbral de 3 fallos consecutivos en 10 minutos. El estado se actualizará con las próximas solicitudes o al volver a comprobar.";
-          }
-        }
-      }
-    } catch (error) { console.error("AI health:", error); }
+      renderHealth(panel, data.health, data.history || {});
+    } catch (error) { console.error("AI health check:", error); }
   }
 
   async function renderAI(panel, oldForm) {
@@ -66,8 +78,8 @@
     const result = $("[data-result]", form); const collect = () => Object.fromEntries(new FormData(form));
     $("[data-health]", form)?.addEventListener("click", () => health(form));
     $("[data-test]", form)?.addEventListener("click", async (event) => { try { const data = await withBusy(event.currentTarget, "Probando…", () => post("/api/crm/integrations", { action: "test", section: "ai", values: collect() })); result.textContent = data.message; result.className = "inline-result is-ok"; } catch (error) { result.textContent = error.message; result.className = "inline-result is-error"; } });
-    form.addEventListener("submit", async (event) => { event.preventDefault(); try { await withBusy($("button[type=submit]", form), "Guardando…", () => post("/api/crm/integrations", { action: "save", section: "ai", values: collect() })); toast("Configuración de IA guardada."); await health(form); refreshBadges(); } catch (error) { result.textContent = error.message; result.className = "inline-result is-error"; } });
-    health(form);
+    form.addEventListener("submit", async (event) => { event.preventDefault(); try { await withBusy($("button[type=submit]", form), "Guardando…", () => post("/api/crm/integrations", { action: "save", section: "ai", values: collect() })); toast("Configuración de IA guardada."); await loadHealth(form); refreshBadges(); } catch (error) { result.textContent = error.message; result.className = "inline-result is-error"; } });
+    loadHealth(form);
   }
 
   window.renderIntegrationsTab = async (panel) => { if (typeof original === "function") await original(panel); const oldForm = $('[data-section="ai"]', panel); if (oldForm) await renderAI(panel, oldForm); };
