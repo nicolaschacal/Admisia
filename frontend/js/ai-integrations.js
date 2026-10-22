@@ -9,8 +9,8 @@
 
   function renderHealth(panel, liveHealth, history = {}) {
     const box = $("[data-ai-health]", panel);
-    const primary = history.primary?.status && history.primary.status !== "unknown" ? history.primary : liveHealth?.primary;
-    const secondary = history.secondary?.status && history.secondary.status !== "unknown" ? history.secondary : liveHealth?.secondary;
+    const primary = history.primary || liveHealth?.primary;
+    const secondary = history.secondary || liveHealth?.secondary;
     if (box) box.innerHTML = `${healthPill("Principal", primary)} ${healthPill("Secundario", secondary)}`;
     const alert = $("[data-ai-alert]", panel);
     const active = [history.primary, history.secondary].filter((item) => item?.alertActive);
