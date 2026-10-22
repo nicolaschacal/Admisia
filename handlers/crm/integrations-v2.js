@@ -2,6 +2,7 @@ const { query } = require("../../lib/db");
 const { requireManager } = require("../../lib/auth");
 const { DEFAULT_MODEL, DEFAULT_FALLBACK_MODEL, encrypt, readStored, writeStored, getRuntimeConfig } = require("../../lib/config");
 const { PROVIDER_DEFAULTS, healthCheck } = require("../../lib/ai");
+const { getProviderHealth } = require("../../lib/ai-health");
 const legacy = require("./integrations");
 
 const PROVIDERS = ["gemini", "openai", "anthropic", "custom"];
@@ -12,6 +13,7 @@ async function view() {
   const config = await getRuntimeConfig({ fresh: true });
   const p = config.ai.primary;
   const s = config.ai.secondary;
+  const health = await getProviderHealth();
   return {
     ai: {
       configured: Boolean(p.apiKey && p.provider && p.model),
@@ -20,7 +22,8 @@ async function view() {
       primary: { provider: p.provider, model: p.model, baseUrl: p.baseUrl, apiKeyHint: hint(p.apiKey), configured: Boolean(p.apiKey && p.provider && p.model) },
       secondary: { provider: s.provider, model: s.model, baseUrl: s.baseUrl, apiKeyHint: hint(s.apiKey), configured: Boolean(s.apiKey && s.provider && s.model) },
       providers: PROVIDERS.map((id) => ({ id, label: PROVIDER_DEFAULTS[id].label })),
-      defaults: { model: DEFAULT_MODEL, fallbackModel: DEFAULT_FALLBACK_MODEL }
+      defaults: { model: DEFAULT_MODEL, fallbackModel: DEFAULT_FALLBACK_MODEL },
+      health
     },
     email: {
       configured: Boolean(config.email.host && config.email.user && config.email.password), source: config.email.sources.host,
@@ -101,8 +104,9 @@ module.exports = async (req, res) => {
   try {
     if (action === "health") {
       const config = await getRuntimeConfig({ fresh: true });
-      const [primary, secondary] = await Promise.all([healthCheck(config.ai.primary), healthCheck(config.ai.secondary)]);
-      return res.status(200).json({ success: true, health: { primary, secondary }, checkedAt: new Date().toISOString() });
+      const [primary, secondary] = await Promise.all([healthCheck(config.ai.primary, "primary"), healthCheck(config.ai.secondary, "secondary")]);
+      const history = await getProviderHealth();
+      return res.status(200).json({ success: true, health: { primary, secondary }, history, checkedAt: new Date().toISOString() });
     }
     if (section !== "ai") return res.status(400).json({ success: false, message: "Sección desconocida." });
     if (action === "test") return res.status(200).json({ success: true, message: await testAI(req.body?.values || {}) });
