@@ -435,7 +435,7 @@ Mensajes de la familia en esta conversación: ${userTurns + 1}.${capturedContext
         systemInstruction
       });
     } catch (error) {
-      console.error("Gemini fallback agotado:", error?.status, error?.message);
+      console.error("Fallback de IA agotado:", error?.status, error?.message);
 
       const fallback = knowledgeFallback(knowledgeItems);
       if (fallback) {
@@ -472,7 +472,7 @@ Mensajes de la familia en esta conversación: ${userTurns + 1}.${capturedContext
     return res.status(200).json({
       success: true,
       response: resolved.text,
-      source: "gemini",
+      source: "ai",
       action: resolved.action,
       openContact: Boolean(resolved.openContact)
     });
@@ -480,7 +480,7 @@ Mensajes de la familia en esta conversación: ${userTurns + 1}.${capturedContext
     if (error?.name === "AbortError") {
       return res.status(504).json({
         success: false,
-        message: "Gemini demoró demasiado en responder (más de 20 segundos)."
+        message: "El proveedor de IA demoró demasiado en responder (más de 20 segundos)."
       });
     }
 
@@ -488,7 +488,7 @@ Mensajes de la familia en esta conversación: ${userTurns + 1}.${capturedContext
 
     return res.status(500).json({
       success: false,
-      message: "Error interno al comunicarse con Gemini.",
+      message: "Error interno al comunicarse con el proveedor de IA.",
       detail: String(error?.message || "Error desconocido").slice(0, 300)
     });
   }
