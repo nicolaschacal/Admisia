@@ -38,6 +38,15 @@ const APPT_STATUS = {
   cancelled: ["Cancelada", "pill-danger"]
 };
 
+const CAPTURE_LABEL = {
+  info: "Pidió información",
+  vacancy: "Aviso de vacantes",
+  brochure: "Pidió el folleto",
+  callback: "Pidió que lo llamen",
+  detected: "Dejó su contacto"
+};
+const INTEREST_LABEL = { high: "Alto", medium: "Medio", low: "Bajo" };
+
 const ROLES = { admin: "Administrador", manager: "Gestor", viewer: "Solo lectura" };
 const WEEKDAYS = [[1, "Lun"], [2, "Mar"], [3, "Mié"], [4, "Jue"], [5, "Vie"], [6, "Sáb"], [7, "Dom"]];
 
@@ -61,6 +70,8 @@ const ICONS = {
   mailOut: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
   calendar: '<path d="M7 3v3M17 3v3M3.5 9.5h17M5 5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 5 5Z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'
 };
 const icon = (name, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -396,6 +407,7 @@ async function loadOverview() {
       <div class="stats">
         <div class="card stat"><span>Consultas (30 días)</span><strong>${s.inquiries_30d}</strong></div>
         <div class="card stat"><span>Candidatos nuevos (30 días)</span><strong>${s.leads_30d}</strong></div>
+        <button class="card stat stat-link" data-go-contacts><span>Contactos sin visita (30 días)</span><strong>${s.contacts_no_visit_30d ?? 0}</strong></button>
         <div class="card stat"><span>Visitas próximas</span><strong>${s.upcoming_appointments}</strong></div>
         <div class="card stat ${Number(s.overdue_followups) ? "is-alert" : ""}"><span>Seguimientos vencidos</span><strong>${s.overdue_followups}</strong></div>
       </div>
@@ -431,6 +443,7 @@ async function loadOverview() {
 
     wireLeadOpeners();
     $$("[data-go]", view).forEach((btn) => btn.addEventListener("click", () => navigate(btn.dataset.go)));
+    $("[data-go-contacts]", view)?.addEventListener("click", () => { pipelineMode = "contacts"; navigate("pipeline"); });
   } catch (error) {
     handleViewError(error);
   }
@@ -438,15 +451,59 @@ async function loadOverview() {
 
 /* ---------- Pipeline ---------- */
 
+let pipelineMode = "board";
+
 async function loadPipeline() {
-  if (!view.querySelector(".pipeline")) setLoading("Cargando candidatos…");
+  if (!view.querySelector(".pipeline, .contacts-list")) setLoading("Cargando candidatos…");
   try {
     const search = leadSearch.value.trim();
-    const data = await api(`/api/crm/leads${search ? `?search=${encodeURIComponent(search)}` : ""}`);
-    const grouped = Object.fromEntries(STAGES.map(([key]) => [key, []]));
-    data.leads.forEach((lead) => (grouped[lead.status] || grouped.new_inquiry).push(lead));
+    const qs = (extra) => {
+      const p = new URLSearchParams(extra);
+      if (search) p.set("search", search);
+      const str = p.toString();
+      return str ? `?${str}` : "";
+    };
+    const [data, contacts] = await Promise.all([
+      pipelineMode === "board" ? api(`/api/crm/leads${qs({})}`) : null,
+      api(`/api/crm/leads${qs({ capture: "no_visit" })}`)
+    ]);
 
-    view.innerHTML = `
+    const toolbar = `
+      <div class="agenda-toolbar">
+        <div class="segmented" role="tablist" aria-label="Vista de candidatos">
+          <button role="tab" data-pmode="board" class="${pipelineMode === "board" ? "is-active" : ""}">Embudo</button>
+          <button role="tab" data-pmode="contacts" class="${pipelineMode === "contacts" ? "is-active" : ""}">Contactos sin visita${contacts.leads.length ? ` <span class="seg-count">${contacts.leads.length}</span>` : ""}</button>
+        </div>
+      </div>`;
+
+    if (pipelineMode === "contacts") {
+      view.innerHTML = `${toolbar}
+        <section class="card contacts-list">
+          <div class="card-head"><div><h2>Contactos sin visita</h2><p>Familias que dejaron sus datos en el chat pero todavía no agendaron. Llamalas o escribiles.</p></div></div>
+          <div class="list">
+            ${contacts.leads.length ? contacts.leads.map((lead) => {
+              const wa = String(lead.phone || "").replace(/[^\d]/g, "");
+              return `
+              <div class="list-row contact-row">
+                <button class="list-row-main contact-open" data-lead="${esc(lead.id)}">
+                  <strong>${esc(lead.adult_name || lead.phone || lead.email || "Sin nombre")}</strong>
+                  <span>${esc(CAPTURE_LABEL[lead.capture_source] || "Contacto")}${lead.capture_detail ? ` · ${esc(lead.capture_detail)}` : ""} · ${esc(relativeDue(lead.created_at))}</span>
+                  ${lead.ai_primary_concern ? `<span class="contact-concern">${icon("sparkle")}${esc(lead.ai_primary_concern)}</span>` : ""}
+                </button>
+                <span class="list-row-aside contact-actions-inline">
+                  ${lead.ai_interest_level ? `<span class="pill ${lead.ai_interest_level === "high" ? "pill-success" : lead.ai_interest_level === "medium" ? "pill-warning" : ""}">Interés ${esc(INTEREST_LABEL[lead.ai_interest_level] || lead.ai_interest_level)}</span>` : ""}
+                  ${wa ? `<a class="icon-btn" href="https://wa.me/${esc(wa.startsWith("0") ? `598${wa.slice(1)}` : wa)}" target="_blank" rel="noreferrer" title="WhatsApp" aria-label="WhatsApp">${icon("whatsapp")}</a>` : ""}
+                  ${lead.phone ? `<a class="icon-btn" href="tel:${esc(lead.phone)}" title="Llamar" aria-label="Llamar">${icon("phone")}</a>` : ""}
+                  ${lead.email ? `<a class="icon-btn" href="mailto:${esc(lead.email)}" title="Correo" aria-label="Correo">${icon("mail")}</a>` : ""}
+                </span>
+              </div>`;
+            }).join("") : '<div class="empty"><strong>Sin contactos pendientes</strong>Cuando una familia deje su teléfono o correo en el chat sin agendar, aparece acá.</div>'}
+          </div>
+        </section>`;
+    } else {
+      const grouped = Object.fromEntries(STAGES.map(([key]) => [key, []]));
+      data.leads.forEach((lead) => (grouped[lead.status] || grouped.new_inquiry).push(lead));
+      view.innerHTML = `${toolbar}
       <div class="pipeline">
         ${STAGES.map(([key, label]) => `
           <section class="stage">
@@ -454,18 +511,27 @@ async function loadPipeline() {
             <div class="stage-body">
               ${grouped[key].map((lead) => `
                 <button class="lead-card" data-lead="${esc(lead.id)}">
-                  <strong>${esc(lead.student_name || lead.adult_name || "Sin nombre")}</strong>
+                  <strong>${esc(lead.student_name || lead.adult_name || lead.phone || lead.email || "Sin nombre")}</strong>
                   ${lead.student_name && lead.adult_name ? `<span>${esc(lead.adult_name)}</span>` : ""}
-                  <span>${esc(lead.level_interest || "Nivel sin definir")}</span>
+                  <span>${esc(lead.level_interest || (lead.capture_source && lead.capture_source !== "booking" ? CAPTURE_LABEL[lead.capture_source] || "Contacto" : "Nivel sin definir"))}</span>
                   <span class="lead-meta">
+                    ${lead.capture_source && lead.capture_source !== "booking" && !lead.next_appointment ? `<span class="pill pill-warning">Sin visita</span>` : ""}
                     ${lead.next_appointment ? `<span class="pill pill-accent">Visita ${esc(fmtDay(lead.next_appointment))}</span>` : ""}
                     ${lead.next_followup ? `<span class="pill ${new Date(lead.next_followup) < new Date() ? "pill-danger" : ""}">Seguimiento ${esc(fmtDay(lead.next_followup))}</span>` : ""}
-                    ${lead.ai_interest_level ? `<span class="pill">Interés ${esc(lead.ai_interest_level)}</span>` : ""}
+                    ${lead.ai_interest_level ? `<span class="pill">Interés ${esc(INTEREST_LABEL[lead.ai_interest_level] || lead.ai_interest_level)}</span>` : ""}
                   </span>
                 </button>`).join("") || '<div class="stage-empty">Sin candidatos</div>'}
             </div>
           </section>`).join("")}
       </div>`;
+    }
+
+    $$("[data-pmode]", view).forEach((btn) => btn.addEventListener("click", () => {
+      if (pipelineMode === btn.dataset.pmode) return;
+      pipelineMode = btn.dataset.pmode;
+      view.innerHTML = "";
+      loadPipeline();
+    }));
     wireLeadOpeners();
   } catch (error) {
     handleViewError(error);
@@ -1012,7 +1078,7 @@ async function openLead(id) {
       <section class="card card-body">
         <div class="lead-hero">
           <span class="avatar-initials">${esc(initials(name))}</span>
-          <div><h3>${esc(name)}</h3><p>${esc(l.adult_name || "")}${l.level_interest ? ` · ${esc(l.level_interest)}` : ""}</p></div>
+          <div><h3>${esc(name)}</h3><p>${esc([student.full_name ? l.adult_name : "", l.level_interest, l.capture_source && l.capture_source !== "booking" ? CAPTURE_LABEL[l.capture_source] : ""].filter(Boolean).join(" · "))}</p></div>
         </div>
         <div class="contact-actions">
           ${l.phone ? `<a class="btn btn-secondary btn-sm" href="tel:${esc(l.phone)}">${icon("phone")}Llamar</a>` : ""}
@@ -1043,6 +1109,7 @@ async function openLead(id) {
             <dt>Fecha de nacimiento</dt><dd>${esc(student.birth_date ? fmtDate(`${String(student.birth_date).slice(0, 10)}T12:00:00`, { dateStyle: "long" }) : "—")}</dd>
             <dt>Institución anterior</dt><dd>${esc(student.previous_institution || "—")}</dd>
             <dt>Comentarios</dt><dd>${esc(student.comments || "—")}</dd>
+            <dt>Cómo llegó</dt><dd>${esc(l.capture_source && l.capture_source !== "booking" ? `${CAPTURE_LABEL[l.capture_source] || "Contacto"}${l.capture_detail ? ` · ${l.capture_detail}` : ""}` : "Agendó una visita")}</dd>
             <dt>Origen</dt><dd>${esc([l.utm_source, l.utm_medium, l.utm_campaign].filter(Boolean).join(" / ") || l.source || "—")}</dd>
           </dl>
         </div>
@@ -1053,7 +1120,7 @@ async function openLead(id) {
         <div class="card-body">
           ${l.ai_summary ? `
           <dl class="facts">
-            <dt>Interés</dt><dd>${esc(l.ai_interest_level || "—")}</dd>
+            <dt>Interés</dt><dd>${esc(INTEREST_LABEL[l.ai_interest_level] || l.ai_interest_level || "—")}</dd>
             <dt>Resumen</dt><dd>${esc(l.ai_summary)}</dd>
             <dt>Principal inquietud</dt><dd>${esc(l.ai_primary_concern || "—")}</dd>
             <dt>Siguiente paso sugerido</dt><dd>${esc(l.ai_next_action || "—")}</dd>
@@ -1141,6 +1208,7 @@ const SETTINGS_TABS = [
   ["start", "Primeros pasos"],
   ["business", "Negocio"],
   ["booking", "Agenda"],
+  ["capture", "Captación"],
   ["integrations", "Integraciones"],
   ["team", "Equipo"],
   ["account", "Mi cuenta"]
@@ -1177,6 +1245,7 @@ async function renderSettingsTab() {
       start: renderStartTab,
       business: renderBusinessTab,
       booking: renderBookingTab,
+      capture: renderCaptureTab,
       integrations: renderIntegrationsTab,
       team: renderTeamTab,
       account: renderAccountTab
@@ -1528,6 +1597,107 @@ async function renderBookingTab(panel) {
       renderSettingsTab();
     } catch (error) { toast(error.message, { error: true }); }
   }));
+}
+
+/* Captación */
+const CAPTURE_OPTIONS = [
+  ["contactOffer", "Ofrecer enviar información", "Cuando la familia muestra interés pero no agenda, el asistente ofrece que Admisiones le escriba por WhatsApp o correo."],
+  ["vacancyAlerts", "Aviso de vacantes", "Si pregunta por cupos, inscripciones o el año próximo, el asistente ofrece avisarle cuando haya novedades."],
+  ["brochure", "Folleto", "Si pide más detalle, el asistente ofrece el folleto: se descarga en el chat y se envía por correo."],
+  ["callback", "Que lo llamen", "Si prefiere hablar con una persona, deja su teléfono y el mejor horario para llamarlo."],
+  ["autoDetect", "Detectar teléfonos y correos", "Si la familia escribe su teléfono o correo en la conversación, se registra como candidato automáticamente."]
+];
+
+function fmtBytes(bytes) {
+  const n = Number(bytes) || 0;
+  return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+}
+
+async function renderCaptureTab(panel) {
+  const { capture, brochure } = await api("/api/crm/capture");
+  const editable = currentManager?.role === "admin";
+  const dis = editable ? "" : "disabled";
+
+  panel.innerHTML = `
+    <form id="capture-form" class="card">
+      <div class="card-head"><div><h2>Captación de contactos</h2><p>Formas de quedarte con el contacto de las familias que todavía no agendan una visita. Aparecen en Candidatos → Contactos sin visita, con una tarea de seguimiento.</p></div></div>
+      <div class="list">
+        ${CAPTURE_OPTIONS.map(([key, label, help]) => `
+          <label class="list-row capture-option">
+            <span class="list-row-main"><strong>${label}</strong><span>${help}</span></span>
+            <span class="switch"><input type="checkbox" name="${key}" ${capture[key] !== false ? "checked" : ""} ${dis}><span class="track"></span></span>
+          </label>`).join("")}
+      </div>
+      <div class="card-body">
+        <label class="field"><span>Novedades de inscripción</span>
+          <textarea name="vacancyText" rows="2" maxlength="400" placeholder="Ej. Las inscripciones para 2027 abren el 1 de noviembre. Quedan pocos lugares en Inicial 4." ${dis}>${esc(capture.vacancyText || "")}</textarea>
+          <small>Opcional. El asistente lo usa al hablar de vacantes e inscripciones.</small>
+        </label>
+      </div>
+      ${editable ? '<div class="card-foot form-actions"><button type="submit" class="btn btn-primary">Guardar cambios</button></div>' : ""}
+    </form>
+
+    <section class="card">
+      <div class="card-head"><div><h2>Folleto</h2><p>PDF de hasta 3 MB con la propuesta, niveles o lo que quieras compartir.</p></div></div>
+      <div class="card-body">
+        ${brochure ? `
+          <div class="file-row">
+            <span class="file-icon">PDF</span>
+            <span class="list-row-main"><strong>${esc(brochure.name)}</strong><span>${esc(fmtBytes(brochure.size))} · subido ${esc(fmtDate(brochure.updated_at, { dateStyle: "medium" }))}</span></span>
+            <a class="btn btn-ghost btn-sm" href="/api/profile?file=brochure" target="_blank" rel="noreferrer">${icon("download")}Ver</a>
+            ${editable ? `<button class="btn btn-ghost btn-sm" id="delete-brochure">${icon("trash")}Quitar</button>` : ""}
+          </div>` : '<p class="muted">Todavía no subiste un folleto.</p>'}
+        ${editable ? `
+          <div class="form-actions" style="justify-content:flex-start">
+            <label class="btn btn-secondary btn-sm">${brochure ? "Reemplazar PDF" : "Subir PDF"}<input id="brochure-file" type="file" accept="application/pdf,.pdf" hidden></label>
+          </div>
+          <label class="field"><span>O un enlace al folleto</span>
+            <input form="capture-form" name="brochureUrl" type="url" placeholder="https://…" value="${esc(capture.brochureUrl || "")}">
+            <small>Se usa si no subiste un PDF. Guardalo con “Guardar cambios”.</small>
+          </label>` : ""}
+      </div>
+    </section>`;
+
+  if (!editable) return;
+
+  $("#capture-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = Object.fromEntries(CAPTURE_OPTIONS.map(([key]) => [key, form.elements[key].checked]));
+    values.vacancyText = form.elements.vacancyText.value;
+    values.brochureUrl = $("[name=brochureUrl]")?.value || "";
+    try {
+      await withBusy($("button[type=submit]", form), "Guardando…", () => post("/api/crm/capture", { action: "save", capture: values }));
+      toast("Captación actualizada.");
+    } catch (error) { toast(error.message, { error: true }); }
+  });
+
+  $("#brochure-file").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) return toast("El folleto puede pesar hasta 3 MB.", { error: true });
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+        reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
+        reader.readAsDataURL(file);
+      });
+      toast("Subiendo folleto…");
+      await post("/api/crm/capture", { action: "upload-brochure", name: file.name, data });
+      toast("Folleto subido.");
+      renderSettingsTab();
+    } catch (error) { toast(error.message, { error: true }); }
+  });
+
+  $("#delete-brochure")?.addEventListener("click", async () => {
+    if (!(await confirmDialog("El asistente va a dejar de ofrecer el folleto (salvo que cargues un enlace).", { title: "¿Quitar el folleto?", confirmLabel: "Quitar", danger: true }))) return;
+    try {
+      await post("/api/crm/capture", { action: "delete-brochure" });
+      toast("Folleto quitado.");
+      renderSettingsTab();
+    } catch (error) { toast(error.message, { error: true }); }
+  });
 }
 
 /* Integraciones */

@@ -6,8 +6,10 @@ const { DateTime } = require("luxon");
 const { createCalendarEvent } = require("../../lib/google-calendar");
 const {
   linkVisitorToLead,
-  persistVisitorMessage
+  persistVisitorMessage,
+  ensureConversation
 } = require("../../lib/visitor-session");
+const { ensureCaptureSchema } = require("../../lib/capture");
 
 function clean(value, max = 500) {
   return String(value || "").trim().slice(0, max);
@@ -66,6 +68,7 @@ module.exports = async (req, res) => {
     }
 
     const levelInterest = inferLevel(birthDate);
+    await ensureCaptureSchema();
 
     const created = await withTransaction(async (client) => {
       const lockKey = Math.abs(
@@ -89,11 +92,13 @@ module.exports = async (req, res) => {
       }
 
       let lead = null;
+      // A family that already left its contact in this chat keeps the same lead.
+      const session = await ensureConversation(req, res, client);
       const existing = await client.query(
         `SELECT * FROM leads
-         WHERE lower(email)=lower($1) OR phone=$2
-         ORDER BY created_at DESC LIMIT 1`,
-        [clean(email, 200), clean(phone, 80)]
+         WHERE id=$3 OR lower(email)=lower($1) OR phone=$2
+         ORDER BY (id=$3) DESC NULLS LAST, created_at DESC LIMIT 1`,
+        [clean(email, 200), clean(phone, 80), session.lead_id || null]
       );
 
       if (existing.rows[0]) {
@@ -107,6 +112,7 @@ module.exports = async (req, res) => {
                utm_source=COALESCE(NULLIF($6,''), utm_source),
                utm_medium=COALESCE(NULLIF($7,''), utm_medium),
                utm_campaign=COALESCE(NULLIF($8,''), utm_campaign),
+               capture_source=COALESCE(capture_source,'booking'),
                last_contact_at=now(),
                updated_at=now()
            WHERE id=$1
@@ -127,8 +133,8 @@ module.exports = async (req, res) => {
         const inserted = await client.query(
           `INSERT INTO leads
              (adult_name,email,phone,status,level_interest,privacy_consent_at,
-              utm_source,utm_medium,utm_campaign,last_contact_at,source)
-           VALUES ($1,$2,$3,'visit_scheduled',$4,now(),$5,$6,$7,now(),'chat')
+              utm_source,utm_medium,utm_campaign,last_contact_at,source,capture_source)
+           VALUES ($1,$2,$3,'visit_scheduled',$4,now(),$5,$6,$7,now(),'chat','booking')
            RETURNING *`,
           [
             clean(adultName, 200),
@@ -169,6 +175,12 @@ module.exports = async (req, res) => {
       const appointment = appointmentResult.rows[0];
 
       await linkVisitorToLead(req, res, lead.id, client);
+
+      await client.query(
+        `UPDATE followups SET status='completed', completed_at=now(), updated_at=now()
+         WHERE lead_id=$1 AND status='pending' AND type='capture_contact'`,
+        [lead.id]
+      );
 
       await client.query(
         `INSERT INTO activities (lead_id,type,description,metadata)

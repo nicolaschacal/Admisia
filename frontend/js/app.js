@@ -313,6 +313,193 @@ function addBookingAction() {
   scrollToBottom();
 }
 
+const CONTACT_COPY = {
+  info: {
+    button: "Sí, que me escriban",
+    title: "Recibir información",
+    subtitle: "Admisiones te escribe por WhatsApp o correo.",
+    submit: "Enviar mis datos",
+    echo: "Sí, quiero que me manden la información."
+  },
+  vacancy: {
+    button: "Avisame",
+    title: "Aviso de vacantes",
+    subtitle: "Te avisamos apenas haya novedades de vacantes e inscripciones.",
+    submit: "Quiero que me avisen",
+    echo: "Sí, avisame cuando haya novedades."
+  },
+  brochure: {
+    button: "Quiero el folleto",
+    title: "Folleto",
+    subtitle: "Te lo mandamos por correo y también lo podés descargar acá.",
+    submit: "Recibir el folleto",
+    echo: "Sí, quiero el folleto."
+  },
+  callback: {
+    button: "Que me llamen",
+    title: "Que te llamen",
+    subtitle: "Una persona de Admisiones te llama cuando te quede cómodo.",
+    submit: "Pedir llamada",
+    echo: "Prefiero que me llamen."
+  }
+};
+let contactCaptured = false;
+
+function contactReason(action) {
+  const reason = String(action || "").startsWith("contact:") ? action.slice(8) : "";
+  return CONTACT_COPY[reason] ? reason : null;
+}
+
+function addContactAction(reason) {
+  removeBookingAction();
+  const copy = CONTACT_COPY[reason];
+  if (!copy) return;
+
+  const row = document.createElement("div");
+  row.className = "booking-action-row";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "booking-action-button";
+  button.textContent = copy.button;
+  button.addEventListener("click", () => {
+    removeBookingAction();
+    showContactCard(reason, { echo: copy.echo });
+  });
+  row.appendChild(button);
+  ensureConversationRoot().appendChild(row);
+  scrollToBottom();
+}
+
+function showContactCard(reason, { echo = "" } = {}) {
+  const copy = CONTACT_COPY[reason] || CONTACT_COPY.info;
+  setPendingAction(null);
+  if (echo) addMessage(echo, "user");
+
+  const container = document.createElement("div");
+  container.className = "booking-form-card contact-card";
+  container.innerHTML = `
+    <div class="booking-head">
+      <span class="booking-head-copy">
+        <strong>${escapeHtml(copy.title)}</strong>
+        <small>${escapeHtml(copy.subtitle)}</small>
+      </span>
+    </div>`;
+
+  const needsPhone = reason === "callback";
+  const needsEmail = reason === "brochure";
+  const form = document.createElement("form");
+  form.className = "booking-form";
+  form.noValidate = true;
+  form.innerHTML = `
+    <div class="field-group">
+      <label class="field">
+        <span>Nombre</span>
+        <input placeholder="Nombre" name="name" autocomplete="name" required maxlength="200">
+      </label>
+      <label class="field">
+        <span>${needsPhone ? "Teléfono" : "WhatsApp o teléfono"}</span>
+        <input placeholder="${needsPhone ? "Teléfono" : "WhatsApp o teléfono"}" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="40" ${needsPhone ? "required" : ""}>
+      </label>
+      ${needsPhone ? "" : `
+      <label class="field">
+        <span>Correo electrónico</span>
+        <input placeholder="Correo electrónico" name="email" type="email" inputmode="email" autocomplete="email" maxlength="200" ${needsEmail ? "required" : ""}>
+      </label>`}
+    </div>
+    ${needsPhone ? `
+    <div class="contact-time">
+      <span class="contact-time-label">¿Cuándo te queda mejor?</span>
+      <div class="slot-times">
+        ${["Mañana", "Tarde", "Cualquier horario"].map((label, index) => `<button type="button" class="slot-time${index === 2 ? " is-selected" : ""}" data-time="${label}">${label}</button>`).join("")}
+      </div>
+    </div>` : `<p class="contact-hint">${needsEmail ? "Te mandamos el folleto a este correo." : "Con uno de los dos alcanza."}</p>`}
+    <label class="consent-row">
+      <input name="consent" type="checkbox" value="true" required>
+      <span>Acepto que el colegio use estos datos para contactarme sobre admisiones.</span>
+    </label>
+    <button type="submit" class="chat-btn chat-btn--primary booking-submit"><span>${escapeHtml(copy.submit)}</span></button>
+  `;
+
+  let bestTime = "Cualquier horario";
+  form.querySelectorAll("[data-time]").forEach((chip) => chip.addEventListener("click", () => {
+    bestTime = chip.dataset.time;
+    form.querySelectorAll("[data-time]").forEach((other) => other.classList.toggle("is-selected", other === chip));
+  }));
+
+  const showError = (message) => {
+    const errorBox = form.querySelector(".booking-error") || document.createElement("div");
+    errorBox.className = "booking-error";
+    errorBox.textContent = message;
+    form.prepend(errorBox);
+  };
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(form).entries());
+    const name = String(values.name || "").trim();
+    const phone = String(values.phone || "").trim();
+    const email = String(values.email || "").trim();
+
+    if (!name) return showError("Contanos tu nombre.");
+    if (needsPhone && !phone) return showError("Necesitamos un teléfono para llamarte.");
+    if (needsEmail && !email) return showError("Dejanos un correo para mandarte el folleto.");
+    if (!phone && !email) return showError("Dejanos un teléfono o un correo.");
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError("El correo no parece válido.");
+    if (!values.consent) return showError("Necesitamos tu autorización para contactarte.");
+
+    const submit = form.querySelector("button[type=submit]");
+    submit.disabled = true;
+    submit.querySelector("span").textContent = "Enviando…";
+    setTyping(true, "guardando tus datos…");
+
+    try {
+      const response = await fetch("/api/lead/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          reason, name, phone, email,
+          bestTime: needsPhone ? bestTime : "",
+          consent: true,
+          ...attribution
+        })
+      });
+      const data = await response.json();
+      setTyping(false);
+      if (!response.ok || !data.success) throw new Error(data.message || "No se pudieron guardar tus datos.");
+
+      contactCaptured = true;
+      container.innerHTML = `
+        <div class="booking-success">
+          <p class="appt-status">${uiIcon("check")}Datos enviados</p>
+          <p>${escapeHtml(copy.title)}${needsPhone ? ` · ${escapeHtml(bestTime.toLowerCase())}` : ""}</p>
+        </div>`;
+
+      addMessage(data.message, "assistant");
+      conversationHistory.push({ role: "model", text: data.message });
+
+      if (data.brochureUrl) {
+        const wrap = document.createElement("div");
+        wrap.className = "brochure-card";
+        wrap.innerHTML = `<p class="brochure-title">${uiIcon("doc")}<span>Folleto de ${escapeHtml(publicProfile.name || "la institución")}</span></p>`;
+        const actions = document.createElement("div");
+        actions.className = "bubble-actions";
+        actions.append(bubbleButton("Descargar folleto", { icon: "download", href: data.brochureUrl }));
+        wrap.appendChild(actions);
+        addCustomAssistantCard(wrap);
+      }
+    } catch (error) {
+      setTyping(false);
+      submit.disabled = false;
+      submit.querySelector("span").textContent = copy.submit;
+      showError(error.message);
+    }
+  });
+
+  container.appendChild(form);
+  addCustomAssistantCard(container);
+}
+
 function lastAssistantOffersBooking() {
   const lastAssistant = [...conversationHistory].reverse().find((item) => item?.role === "model" && item?.text);
   return Boolean(lastAssistant && suggestsBooking(lastAssistant.text));
@@ -331,7 +518,9 @@ const UI_ICONS = {
   swap: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
-  chevron: '<path d="m9 6 6 6-6 6"/>'
+  chevron: '<path d="m9 6 6 6-6 6"/>',
+  doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'
 };
 
 function uiIcon(name, className = "ui-icon") {
@@ -1065,7 +1254,8 @@ async function sendMessage(message) {
         credentials: "same-origin",
         body: JSON.stringify({
           message,
-          history: conversationHistory
+          history: conversationHistory,
+          ...attribution
         }),
         signal: controller.signal
       });
@@ -1086,6 +1276,8 @@ async function sendMessage(message) {
     const nextAction = data.action || (suggestsBooking(data.response) ? "booking" : null);
     setPendingAction(nextAction);
     if (nextAction === "booking" && !currentAppointment) addBookingAction();
+    const reason = contactReason(nextAction);
+    if (reason && !contactCaptured) addContactAction(reason);
   } catch (error) {
     setTyping(false);
     console.error("Chat:", error);
@@ -1120,6 +1312,18 @@ async function submitQuestion(text) {
     addMessage(cleanText, "user");
     showCancelConfirmation({ echoUser: false });
     return;
+  }
+
+  const offeredContact = contactReason(pendingAction);
+  if (offeredContact && !contactCaptured && isAffirmative(cleanText) && !isBookingIntent(cleanText) && cleanText.split(/\s+/).length <= 5) {
+    addMessage(cleanText, "user");
+    removeBookingAction();
+    showContactCard(offeredContact);
+    return;
+  }
+  if (offeredContact && isNegative(cleanText)) {
+    setPendingAction(null);
+    removeBookingAction();
   }
 
   const bookingWasOffered = pendingAction === "booking" || lastAssistantOffersBooking();

@@ -1,5 +1,6 @@
 const { query } = require("../../lib/db");
 const { requireManager } = require("../../lib/auth");
+const { ensureCaptureSchema } = require("../../lib/capture");
 
 module.exports = async (req, res) => {
   if (req.method !== "GET") {
@@ -11,6 +12,7 @@ module.exports = async (req, res) => {
     const id = String(req.query?.id || "");
     if (!id) return res.status(400).json({ success: false, message: "Falta id." });
 
+    await ensureCaptureSchema();
     const leadResult = await query("SELECT * FROM leads WHERE id=$1", [id]);
     const lead = leadResult.rows[0];
     if (!lead) return res.status(404).json({ success: false, message: "Candidato no encontrado." });

@@ -1,5 +1,6 @@
 const { query } = require("../../lib/db");
 const { requireManager } = require("../../lib/auth");
+const { ensureCaptureSchema } = require("../../lib/capture");
 
 module.exports = async (req, res) => {
   if (req.method !== "GET") {
@@ -8,6 +9,7 @@ module.exports = async (req, res) => {
   if (!requireManager(req, res)) return;
 
   try {
+    await ensureCaptureSchema();
     const status = String(req.query?.status || "").trim();
     const search = String(req.query?.search || "").trim();
     const params = [];
@@ -16,6 +18,12 @@ module.exports = async (req, res) => {
     if (status) {
       params.push(status);
       where.push(`l.status=$${params.length}`);
+    }
+
+    // "Contacto sin visita": left their contact but never booked.
+    if (String(req.query?.capture || "") === "no_visit") {
+      where.push(`COALESCE(l.capture_source,'booking')<>'booking'
+        AND NOT EXISTS (SELECT 1 FROM appointments a WHERE a.lead_id=l.id AND a.status<>'cancelled')`);
     }
 
     if (search) {

@@ -7,7 +7,7 @@ const PORT = Number(process.env.PORT || 3000);
 const frontend = path.join(__dirname, "../frontend");
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "5mb" }));
 app.use("/css", express.static(path.join(frontend, "css")));
 app.use("/js", express.static(path.join(frontend, "js")));
 app.use("/assets", express.static(path.join(frontend, "assets")));
@@ -43,6 +43,8 @@ const routes = {
   "/api/crm/integrations": require("../handlers/crm/integrations"),
   "/api/crm/team": require("../handlers/crm/team"),
   "/api/crm/setup": require("../handlers/crm/setup"),
+  "/api/crm/capture": require("../handlers/crm/capture"),
+  "/api/lead/contact": require("../api/lead/contact"),
   "/api/cron/followups": require("../api/cron/followups")
 };
 

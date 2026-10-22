@@ -96,6 +96,18 @@ Cuando un gestor marca una entrevista como realizada:
 
 El tiempo puede cambiarse con `FOLLOWUP_DELAY_DAYS`.
 
+## Captación de contactos sin visita
+
+Las familias que conversan pero no agendan también pueden quedar como candidatos:
+
+- **Enviar información, aviso de vacantes y folleto:** cuando la conversación lo amerita (nunca en el primer mensaje ni dos veces seguidas), el asistente lo ofrece y aparece una tarjeta en el chat para dejar nombre, WhatsApp o correo.
+- **Que lo llamen:** si la familia pide hablar con una persona, deja su teléfono y el mejor horario.
+- **Detección automática:** si escribe su teléfono o correo en la conversación, se registra solo.
+
+Cada contacto crea el candidato (con su origen), una tarea de seguimiento, un aviso por correo a Admisiones y el análisis de la IA. En el panel aparecen en **Candidatos → Contactos sin visita**. Si después agenda una visita, sigue siendo el mismo candidato y la tarea se cierra sola.
+
+Todo se activa o desactiva desde **Configuración → Captación**, donde también se sube el folleto (PDF de hasta 3 MB) y las novedades de inscripción. Las columnas nuevas se crean solas la primera vez; `npm run db:migrate` aplica `database/004_capture.sql` en instalaciones nuevas.
+
 ## Dashboard
 
 Ruta:
