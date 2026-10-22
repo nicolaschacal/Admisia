@@ -29,6 +29,7 @@ OBJETIVO
 - Mantener el hilo de la conversación sin volver a presentarte en cada mensaje.
 - Cuando corresponda, proponer como siguiente paso una visita o entrevista.
 - Si ofrecés una visita o entrevista, preguntá de forma clara si quiere ver horarios disponibles dentro del chat. No derives a teléfono como primer paso cuando la agenda puede gestionarse aquí.
+- Si la familia pide expresamente que la llamen o hablar con una persona, eso tiene prioridad: no insistas con la visita.
 
 REGLAS
 - Respondé siempre en español.
@@ -56,9 +57,22 @@ const CONTACT_TAG_RE = /\[\[\s*CONTACTO\s*:\s*([a-záéíóú]+)\s*\]\]/i;
 // model forgets the tag, and to avoid offering twice in a row).
 const OFFER_RE = /\b(te (lo |la |los )?(mand|envi)\w*|te aviso|te avisamos|te (llam|contact)\w*|dejame tu|pasame tu|dejanos tu|tu (numero|correo|mail|whatsapp|telefono))\b/;
 
-function buildCaptureInstruction(capture, { hasLead, brochureAvailable, userTurns }) {
+// "¿Me pueden llamar?", "prefiero hablarlo por teléfono", "quiero hablar con alguien"…
+const CALLBACK_RE = /\b(llamenme|llamame|llamarme|me llamen|me (pueden|podrian|podes|puede|podran|podrias) llamar|(prefiero|mejor|quiero) (hablarlo |hablar |que sea )?por telefono|hablar con (alguien|una persona))\b/;
+function wantsCallback(message) {
+  return CALLBACK_RE.test(normalizeText(message));
+}
+
+function buildCaptureInstruction(capture, { hasLead, brochureAvailable, userTurns, callbackRequested }) {
+  if (callbackRequested) {
+    return `
+PEDIDO DE LLAMADA
+- La familia pidió que la llamen o prefiere hablarlo por teléfono. Respetalo: no insistas con la visita ni con la entrevista.
+- Respondé en una o dos frases cálidas que con gusto alguien de Admisiones la llama y que confirme su teléfono y el mejor horario en el formulario que aparece debajo.
+`;
+  }
   if (hasLead) {
-    return "\nCONTACTO\n- Ya tenemos los datos de contacto de esta familia. No se los pidas de nuevo.\n";
+    return "\nCONTACTO\n- Ya tenemos los datos de contacto de esta familia. No se los pidas de nuevo. Si pide que la llamen, nunca le insistas con la visita.\n";
   }
   const options = [];
   if (capture.contactOffer) options.push('- [[CONTACTO:info]] cuando la familia mostró interés concreto (cuotas, niveles, propuesta, horarios, inscripción) pero no agenda: ofrecé que Admisiones le mande la información por WhatsApp o correo.');
@@ -70,7 +84,7 @@ function buildCaptureInstruction(capture, { hasLead, brochureAvailable, userTurn
   return `
 CAPTACIÓN DE CONTACTO
 - Objetivo secundario: que las familias interesadas que todavía no agendan una visita dejen un contacto para que Admisiones las acompañe.
-- Si la familia quiere conocer el colegio, la visita tiene prioridad sobre todo lo demás.
+- Si la familia quiere conocer el colegio, la visita tiene prioridad sobre las demás ofertas (salvo que pida que la llamen).
 - ${userTurns < 1 ? "Todavía es muy temprano en la conversación: NO ofrezcas dejar datos en esta respuesta, salvo que la familia pida expresamente que la llamen." : "Podés hacer un ofrecimiento si encaja naturalmente con lo que preguntó."}
 - Respondé primero la consulta completa. El ofrecimiento va al final, en una sola frase, como algo útil y nunca como condición.
 - Si ya lo ofreciste antes o la familia dijo que no, no lo repitas.
@@ -102,8 +116,9 @@ function inferContactReason(text) {
 const SETTING_FOR_REASON = { info: "contactOffer", vacancy: "vacancyAlerts", brochure: "brochure", callback: "callback" };
 
 // Decides which action the chat shows under the assistant reply.
-function resolveAction(responseText, { capture, hasLead, hasAppointment, brochureAvailable, userTurns, previousAssistant }) {
+function resolveAction(responseText, { capture, hasLead, hasAppointment, brochureAvailable, userTurns, previousAssistant, callbackRequested }) {
   const tagged = extractContactAction(responseText);
+  if (callbackRequested) return { text: tagged.text, action: "contact:callback", openContact: true };
   const booking = inferSuggestedAction(tagged.text);
   let reason = tagged.reason || inferContactReason(tagged.text);
 
@@ -350,7 +365,8 @@ module.exports = async (req, res) => {
       hasAppointment: Boolean(await appointmentPromise.catch(() => null)),
       brochureAvailable: Boolean((await brochurePromise.catch(() => null)) || capture.brochureUrl),
       userTurns,
-      previousAssistant
+      previousAssistant,
+      callbackRequested: capture.callback !== false && wantsCallback(message)
     });
 
     if (!apiKey) {
@@ -457,7 +473,8 @@ Mensajes de la familia en esta conversación: ${userTurns + 1}.${capturedContext
       success: true,
       response: resolved.text,
       source: "gemini",
-      action: resolved.action
+      action: resolved.action,
+      openContact: Boolean(resolved.openContact)
     });
   } catch (error) {
     if (error?.name === "AbortError") {

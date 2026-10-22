@@ -1,4 +1,6 @@
 const { DateTime } = require("luxon");
+const { query } = require("../../lib/db");
+const { getCaptureSettings } = require("../../lib/capture");
 const { ZONE } = require("../../lib/scheduling");
 const {
   loadVisitorMessages,
@@ -36,7 +38,13 @@ module.exports = async (req, res) => {
       : null;
 
     const { session, messages } = await loadVisitorMessages(req, res, 250, migratedSession);
-    const appointment = await getCurrentAppointment(session.lead_id);
+    const [appointment, leadRow, capture] = await Promise.all([
+      getCurrentAppointment(session.lead_id),
+      session.lead_id
+        ? query("SELECT adult_name,phone,email FROM leads WHERE id=$1", [session.lead_id]).then((r) => r.rows[0]).catch(() => null)
+        : null,
+      getCaptureSettings()
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -45,7 +53,10 @@ module.exports = async (req, res) => {
         text: item.content,
         createdAt: item.created_at
       })),
-      appointment: appointmentPayload(appointment)
+      appointment: appointmentPayload(appointment),
+      // Same browser that left these details: used to prefill the forms.
+      callbackEnabled: capture.callback !== false,
+      contact: leadRow ? { name: leadRow.adult_name || "", phone: leadRow.phone || "", email: leadRow.email || "" } : null
     });
   } catch (error) {
     console.error("Chat session bootstrap error:", error);

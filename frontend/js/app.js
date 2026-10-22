@@ -344,6 +344,8 @@ const CONTACT_COPY = {
   }
 };
 let contactCaptured = false;
+let knownContact = null;
+let captureCallbackEnabled = true;
 
 function contactReason(action) {
   const reason = String(action || "").startsWith("contact:") ? action.slice(8) : "";
@@ -366,6 +368,23 @@ function addContactAction(reason) {
     showContactCard(reason, { echo: copy.echo });
   });
   row.appendChild(button);
+  ensureConversationRoot().appendChild(row);
+  scrollToBottom();
+}
+
+// Quick replies under the last message (same look as "Ver horarios").
+function addFollowUpActions(actions) {
+  removeBookingAction();
+  const row = document.createElement("div");
+  row.className = "booking-action-row";
+  actions.forEach(([label, onClick]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "booking-action-button";
+    button.textContent = label;
+    button.addEventListener("click", () => { removeBookingAction(); onClick(); });
+    row.appendChild(button);
+  });
   ensureConversationRoot().appendChild(row);
   scrollToBottom();
 }
@@ -420,6 +439,13 @@ function showContactCard(reason, { echo = "" } = {}) {
     <button type="submit" class="chat-btn chat-btn--primary booking-submit"><span>${escapeHtml(copy.submit)}</span></button>
   `;
 
+  // Same browser that already left its details (visit or earlier contact).
+  if (knownContact) {
+    ["name", "phone", "email"].forEach((key) => {
+      if (form.elements[key] && knownContact[key]) form.elements[key].value = knownContact[key];
+    });
+  }
+
   let bestTime = "Cualquier horario";
   form.querySelectorAll("[data-time]").forEach((chip) => chip.addEventListener("click", () => {
     bestTime = chip.dataset.time;
@@ -469,6 +495,7 @@ function showContactCard(reason, { echo = "" } = {}) {
       if (!response.ok || !data.success) throw new Error(data.message || "No se pudieron guardar tus datos.");
 
       contactCaptured = true;
+      knownContact = { name, phone: phone || knownContact?.phone || "", email: email || knownContact?.email || "" };
       container.innerHTML = `
         <div class="booking-success">
           <p class="appt-status">${uiIcon("check")}Datos enviados</p>
@@ -868,6 +895,8 @@ async function bootstrapConversation() {
       const restoredMessages = data.messages || [];
       restoreConversation(restoredMessages);
       currentAppointment = data.appointment || null;
+      knownContact = data.contact || null;
+      captureCallbackEnabled = data.callbackEnabled !== false;
 
       finishConversationBootstrap({
         showWelcome: restoredMessages.length === 0
@@ -1206,14 +1235,15 @@ function showCancelConfirmation({ echoUser = false } = {}) {
   actions.className = "bubble-actions bubble-actions--split";
   actions.append(
     bubbleButton("Mantener", { onClick: () => wrapper.closest(".message-row")?.remove() }),
-    bubbleButton("Sí, cancelar", { tone: "danger-solid", onClick: cancelAppointment })
+    bubbleButton("Sí, cancelar", { tone: "danger-solid", onClick: () => cancelAppointment(wrapper) })
   );
 
   wrapper.append(text, actions);
   addCustomAssistantCard(wrapper);
 }
 
-async function cancelAppointment() {
+async function cancelAppointment(confirmation = null) {
+  confirmation?.querySelectorAll("button").forEach((button) => { button.disabled = true; });
   setTyping(true, "cancelando visita…");
 
   try {
@@ -1228,10 +1258,23 @@ async function cancelAppointment() {
 
     if (!response.ok || !data.success) throw new Error(data.message || "No se pudo cancelar la visita.");
 
+    const { date, time } = splitAppointmentDisplay(currentAppointment?.display || "");
     currentAppointment = null;
     removeAppointmentCard();
-    addMessage("Listo. La visita quedó cancelada. Cuando quieras, podemos coordinar otra fecha.", "assistant");
+    if (confirmation) {
+      confirmation.innerHTML = `
+        <div class="booking-success">
+          <p class="appt-status appt-status--cancelled">${uiIcon("x")}Visita cancelada</p>
+          ${date ? `<p>${escapeHtml(date)}${time ? ` · ${escapeHtml(time)}` : ""}</p>` : ""}
+        </div>`;
+    }
+    addMessage("Listo. La visita quedó cancelada. Cuando quieras, podemos coordinar otra fecha o, si preferís, alguien de Admisiones te llama.", "assistant");
+    addFollowUpActions([
+      ["Elegir otra fecha", () => startBooking({ userMessage: "Quiero elegir otra fecha.", echoUser: true })],
+      ...(captureCallbackEnabled ? [["Que me llamen", () => showContactCard("callback", { echo: CONTACT_COPY.callback.echo })]] : [])
+    ]);
   } catch (error) {
+    confirmation?.querySelectorAll("button").forEach((button) => { button.disabled = false; });
     setTyping(false);
     addMessage(error.message || "No se pudo cancelar la visita.", "assistant");
   }
@@ -1277,7 +1320,8 @@ async function sendMessage(message) {
     setPendingAction(nextAction);
     if (nextAction === "booking" && !currentAppointment) addBookingAction();
     const reason = contactReason(nextAction);
-    if (reason && !contactCaptured) addContactAction(reason);
+    if (reason && data.openContact) showContactCard(reason);
+    else if (reason && (!contactCaptured || reason === "callback")) addContactAction(reason);
   } catch (error) {
     setTyping(false);
     console.error("Chat:", error);
