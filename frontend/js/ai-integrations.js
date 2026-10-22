@@ -11,8 +11,27 @@
       const data = await post("/api/crm/integrations", { action: "health", section: "ai", values: {} });
       const box = $("[data-ai-health]", panel);
       if (box) box.innerHTML = `${healthPill("Principal", data.health.primary)} ${healthPill("Secundario", data.health.secondary)}`;
-      if (data.health.primary.status === "error" && data.health.secondary.status === "healthy") toast("⚠️ El modelo principal está fallando. El secundario queda disponible como respaldo.", { error: true });
-      if (data.health.primary.status === "error" && data.health.secondary.status === "error") toast("🔴 Los dos modelos de IA están fallando.", { error: true });
+      const alert = $("[data-ai-alert]", panel);
+      const history = data.history || {};
+      const active = [history.primary, history.secondary].filter((item) => item?.alertActive);
+      if (alert) {
+        if (active.length) {
+          alert.hidden = false;
+          alert.innerHTML = active.map((item) => {
+            const label = item.slot === "primary" ? "modelo principal" : "modelo secundario";
+            return `<strong>Alerta: ${label} con fallos consecutivos.</strong> Se registraron ${Number(item.consecutiveFailures || 0)} fallos en los últimos 10 minutos. Último error: ${esc(item.lastError || "Error no especificado")}.`;
+          }).join("<br>");
+          alert.classList.add("is-error");
+        } else {
+          alert.hidden = true;
+          alert.classList.remove("is-error");
+          const errors = [history.primary, history.secondary].filter((item) => item?.status === "error");
+          if (errors.length) {
+            alert.hidden = false;
+            alert.textContent = "Se detectó un fallo reciente, pero todavía no alcanza el umbral de 3 fallos consecutivos en 10 minutos. El estado se actualizará con las próximas solicitudes o al volver a comprobar.";
+          }
+        }
+      }
     } catch (error) { console.error("AI health:", error); }
   }
 
@@ -40,6 +59,7 @@
         </div>
         <div class="callout">Las API keys se guardan cifradas en el servidor y nunca se muestran completas en el panel.</div>
         <div class="integration-health" data-ai-health><span class="pill pill-warning">Comprobando estado…</span></div>
+        <div class="callout integration-alert" data-ai-alert hidden role="status"></div>
       </div>
       <div class="card-foot form-actions"><span class="inline-result" data-result></span>${editable ? '<button type="button" class="btn btn-ghost" data-health>Comprobar estado</button><button type="button" class="btn btn-ghost" data-test>Probar principal</button><button type="submit" class="btn btn-primary">Guardar</button>' : ""}</div>`;
     oldForm.replaceWith(form);
@@ -47,7 +67,7 @@
     $("[data-health]", form)?.addEventListener("click", () => health(form));
     $("[data-test]", form)?.addEventListener("click", async (event) => { try { const data = await withBusy(event.currentTarget, "Probando…", () => post("/api/crm/integrations", { action: "test", section: "ai", values: collect() })); result.textContent = data.message; result.className = "inline-result is-ok"; } catch (error) { result.textContent = error.message; result.className = "inline-result is-error"; } });
     form.addEventListener("submit", async (event) => { event.preventDefault(); try { await withBusy($("button[type=submit]", form), "Guardando…", () => post("/api/crm/integrations", { action: "save", section: "ai", values: collect() })); toast("Configuración de IA guardada."); await health(form); refreshBadges(); } catch (error) { result.textContent = error.message; result.className = "inline-result is-error"; } });
-    health(form); clearInterval(window.__admisiaAIHealthTimer); window.__admisiaAIHealthTimer = setInterval(() => { if (!document.hidden && currentView === "settings" && settingsTab === "integrations") health(form); }, 60000);
+    health(form);
   }
 
   window.renderIntegrationsTab = async (panel) => { if (typeof original === "function") await original(panel); const oldForm = $('[data-section="ai"]', panel); if (oldForm) await renderAI(panel, oldForm); };
