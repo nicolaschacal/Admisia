@@ -474,70 +474,295 @@ async function loadPipeline() {
 
 /* ---------- Agenda ---------- */
 
+/* Agenda: list (upcoming), week (time grid) and month views. */
+const AGENDA_MODES = [["list", "Lista"], ["week", "Semana"], ["month", "Mes"]];
+let agendaMode = (() => { try { return localStorage.getItem("admisia_agenda_mode") || "week"; } catch { return "week"; } })();
+let agendaDate = new Date();
+const HOUR_PX = 64;
+
+const dayKey = (d) => new Date(d).toLocaleDateString("en-CA");
+function addDays(d, n) { const c = new Date(d); c.setDate(c.getDate() + n); return c; }
+function startOfWeek(d) { const c = startOfDay(d); const dow = (c.getDay() + 6) % 7; return addDays(c, -dow); }
+function startOfMonth(d) { const c = startOfDay(d); c.setDate(1); return c; }
+function cap(text) { return String(text || "").replace(/^./, (c) => c.toUpperCase()); }
+
+function agendaRange() {
+  if (agendaMode === "week") {
+    const from = startOfWeek(agendaDate);
+    return { from, to: addDays(from, 7) };
+  }
+  if (agendaMode === "month") {
+    const first = startOfMonth(agendaDate);
+    const from = startOfWeek(first);
+    return { from, to: addDays(from, 42), first };
+  }
+  return null;
+}
+
+function agendaTitle() {
+  const range = agendaRange();
+  if (!range) return "Próximas visitas";
+  if (agendaMode === "month") return cap(fmtDate(range.first, { month: "long", year: "numeric" }));
+  const end = addDays(range.from, 6);
+  const sameMonth = range.from.getMonth() === end.getMonth();
+  const left = fmtDate(range.from, sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" });
+  return `${left} – ${fmtDate(end, { day: "numeric", month: sameMonth ? "long" : "short", year: "numeric" })}`;
+}
+
 async function loadAgenda() {
-  setLoading("Cargando agenda…");
+  const range = agendaRange();
+  view.innerHTML = `
+    <div class="agenda-toolbar">
+      <div class="segmented" role="tablist" aria-label="Vista de agenda">
+        ${AGENDA_MODES.map(([id, label]) => `<button role="tab" data-mode="${id}" aria-selected="${id === agendaMode}" class="${id === agendaMode ? "is-active" : ""}">${label}</button>`).join("")}
+      </div>
+      ${range ? `
+      <div class="agenda-nav">
+        <button class="btn btn-ghost btn-sm" data-nav="today">Hoy</button>
+        <button class="icon-btn" data-nav="-1" aria-label="Anterior"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+        <button class="icon-btn" data-nav="1" aria-label="Siguiente"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+        <h2 class="agenda-title">${esc(agendaTitle())}</h2>
+      </div>` : `<h2 class="agenda-title">${esc(agendaTitle())}</h2>`}
+    </div>
+    <div id="agenda-body" class="agenda-body"><div class="loading">Cargando agenda…</div></div>`;
+
+  $$("[data-mode]", view).forEach((btn) => btn.addEventListener("click", () => {
+    agendaMode = btn.dataset.mode;
+    try { localStorage.setItem("admisia_agenda_mode", agendaMode); } catch { /* ignore */ }
+    loadAgenda();
+  }));
+  $$("[data-nav]", view).forEach((btn) => btn.addEventListener("click", () => {
+    const step = btn.dataset.nav;
+    if (step === "today") agendaDate = new Date();
+    else if (agendaMode === "week") agendaDate = addDays(agendaDate, 7 * Number(step));
+    else { const d = new Date(agendaDate); d.setDate(1); d.setMonth(d.getMonth() + Number(step)); agendaDate = d; }
+    loadAgenda();
+  }));
+
+  const body = $("#agenda-body");
   try {
-    const data = await api("/api/crm/appointments");
-    const canEdit = currentManager?.role !== "viewer";
-    const active = data.appointments
+    const query = range ? `?from=${encodeURIComponent(range.from.toISOString())}&to=${encodeURIComponent(range.to.toISOString())}` : "";
+    const [data, blocks] = await Promise.all([
+      api(`/api/crm/appointments${query}`),
+      range ? api("/api/crm/blocked-slots").catch(() => ({ blocks: [] })) : { blocks: [] }
+    ]);
+    const appointments = data.appointments
       .filter((a) => a.status !== "cancelled")
-      .sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
-    const groups = {};
-    active.forEach((a) => {
-      const key = new Date(a.start_at).toLocaleDateString("en-CA");
-      (groups[key] ||= []).push(a);
-    });
+      .sort((x, y) => new Date(x.start_at) - new Date(y.start_at));
 
-    if (!active.length) {
-      view.innerHTML = '<div class="card"><div class="empty"><strong>No hay visitas en el período</strong>Las visitas que agenden las familias desde el chat aparecen acá.</div></div>';
-      return;
+    if (agendaMode === "week") renderAgendaWeek(body, appointments, blocks.blocks || [], range);
+    else if (agendaMode === "month") renderAgendaMonth(body, appointments, range);
+    else renderAgendaList(body, appointments);
+  } catch (error) {
+    if (error.status === 401) return showAuth();
+    body.innerHTML = `<div class="card"><div class="empty"><strong>No se pudo cargar la agenda</strong>${esc(error.message)}</div></div>`;
+  }
+}
+
+function apptTone(status) {
+  return { confirmed: "is-confirmed", completed: "is-done", no_show: "is-missed" }[status] || "is-scheduled";
+}
+
+function renderAgendaList(body, appointments) {
+  const canEdit = currentManager?.role !== "viewer";
+  const groups = {};
+  appointments.forEach((a) => (groups[dayKey(a.start_at)] ||= []).push(a));
+
+  if (!appointments.length) {
+    body.innerHTML = '<div class="card"><div class="empty"><strong>No hay visitas próximas</strong>Las visitas que agenden las familias desde el chat aparecen acá.</div></div>';
+    return;
+  }
+
+  body.innerHTML = Object.entries(groups).map(([date, items]) => `
+    <section class="agenda-day">
+      <h2>${esc(cap(fmtLongDay(`${date}T12:00:00`)))}</h2>
+      <div class="card list">
+        ${items.map((a) => {
+          const [label, tone] = APPT_STATUS[a.status] || [a.status, ""];
+          const open = ["scheduled", "confirmed"].includes(a.status);
+          return `
+          <div class="list-row appt-row is-link" data-lead="${esc(a.lead_id || "")}">
+            <span class="time-col">${fmtTime(a.start_at)}</span>
+            <span class="list-row-main"><strong>${esc(a.student_name || "Estudiante")}</strong><span>${esc(a.adult_name || "")}${a.phone ? ` · ${esc(a.phone)}` : ""}</span></span>
+            <span class="pill ${tone}">${esc(label)}</span>
+            ${canEdit && open ? `<span class="appt-actions" data-stop>${apptActionButtons(a)}</span>` : ""}
+          </div>`;
+        }).join("")}
+      </div>
+    </section>`).join("");
+
+  wireLeadOpeners(body);
+  wireApptActions(body);
+}
+
+function apptActionButtons(a) {
+  return `
+    ${a.status === "scheduled" ? `<button class="btn btn-secondary btn-sm" data-appointment="${esc(a.id)}" data-status="confirmed">Confirmar</button>` : ""}
+    <button class="btn btn-success btn-sm" data-appointment="${esc(a.id)}" data-status="completed">Realizada</button>
+    <button class="btn btn-ghost btn-sm" data-appointment="${esc(a.id)}" data-status="no_show">No asistió</button>
+    <button class="btn btn-ghost btn-sm" data-appointment="${esc(a.id)}" data-status="cancelled">Cancelar</button>`;
+}
+
+function wireApptActions(root, after) {
+  $$("[data-appointment]", root).forEach((btn) => btn.addEventListener("click", async () => {
+    const status = btn.dataset.status;
+    const [label] = APPT_STATUS[status];
+    if (status === "cancelled" || status === "no_show") {
+      const ok = await confirmDialog(
+        status === "cancelled" ? "Se cancela la visita y se libera el horario." : "La visita queda marcada como no asistida.",
+        { title: status === "cancelled" ? "Cancelar visita" : "Marcar como no asistió", confirmLabel: status === "cancelled" ? "Cancelar visita" : "Marcar", danger: status === "cancelled" }
+      );
+      if (!ok) return;
     }
+    try {
+      await post("/api/crm/appointments", { id: btn.dataset.appointment, status });
+      after?.();
+      toast(`Visita marcada como ${label.toLowerCase()}.`);
+      loadAgenda();
+      refreshBadges();
+    } catch (error) { toast(error.message, { error: true }); }
+  }));
+}
 
-    view.innerHTML = Object.entries(groups).map(([date, items]) => `
-      <section class="agenda-day">
-        <h2>${esc(fmtLongDay(`${date}T12:00:00`).replace(/^./, (c) => c.toUpperCase()))}</h2>
-        <div class="card list">
-          ${items.map((a) => {
-            const [label, tone] = APPT_STATUS[a.status] || [a.status, ""];
-            const open = ["scheduled", "confirmed"].includes(a.status);
+function openAppointmentDialog(a) {
+  const canEdit = currentManager?.role !== "viewer";
+  const [label, tone] = APPT_STATUS[a.status] || [a.status, ""];
+  const open = ["scheduled", "confirmed"].includes(a.status);
+  const end = a.end_at ? ` – ${fmtTime(a.end_at)}` : "";
+  const body = openDialog(`
+    <div class="card-head">
+      <div><h2>${esc(a.student_name || "Visita")}</h2><p>${esc(cap(fmtLongDay(a.start_at)))} · ${fmtTime(a.start_at)}${end}</p></div>
+      <span class="pill ${tone}">${esc(label)}</span>
+    </div>
+    <div class="card-body">
+      <dl class="facts">
+        <dt>Familia</dt><dd>${esc(a.adult_name || "—")}</dd>
+        <dt>Teléfono</dt><dd>${esc(a.phone || "—")}</dd>
+        <dt>Correo</dt><dd>${esc(a.email || "—")}</dd>
+      </dl>
+      ${canEdit && open ? `<div class="appt-dialog-actions">${apptActionButtons(a)}</div>` : ""}
+      <div class="form-actions">
+        <button class="btn btn-ghost" data-close>Cerrar</button>
+        ${a.lead_id ? `<button class="btn btn-primary" data-open-lead>Ver ficha</button>` : ""}
+      </div>
+    </div>`);
+  $("[data-close]", body).addEventListener("click", closeDialog);
+  $("[data-open-lead]", body)?.addEventListener("click", () => { closeDialog(); openLead(a.lead_id); });
+  wireApptActions(body, closeDialog);
+}
+
+function renderAgendaWeek(body, appointments, blocks, range) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(range.from, i));
+  const todayKey = dayKey(new Date());
+  const hoursOf = (d) => new Date(d).getHours() + new Date(d).getMinutes() / 60;
+  let first = 8, last = 18;
+  appointments.forEach((a) => {
+    first = Math.min(first, Math.floor(hoursOf(a.start_at)));
+    last = Math.max(last, Math.ceil(hoursOf(a.end_at || a.start_at) + (a.end_at ? 0 : 0.5)));
+  });
+  const hours = Array.from({ length: last - first }, (_, i) => first + i);
+  const height = hours.length * HOUR_PX;
+  const top = (d) => (hoursOf(d) - first) * HOUR_PX;
+  const durationPx = (a) => {
+    const minutes = a.end_at ? (new Date(a.end_at) - new Date(a.start_at)) / 60000 : 30;
+    return Math.max(22, (minutes / 60) * HOUR_PX - 2);
+  };
+  const byDay = {};
+  appointments.forEach((a) => (byDay[dayKey(a.start_at)] ||= []).push(a));
+
+  body.innerHTML = `
+    <div class="card cal-week">
+      <div class="cal-scroll">
+        <div class="cal-grid" style="--hours:${hours.length};--hour:${HOUR_PX}px">
+          <div class="cal-corner"></div>
+          ${days.map((d) => `
+            <div class="cal-dayhead ${dayKey(d) === todayKey ? "is-today" : ""}">
+              <span>${esc(fmtDate(d, { weekday: "short" }).replace(".", ""))}</span>
+              <strong>${d.getDate()}</strong>
+            </div>`).join("")}
+
+          <div class="cal-gutter" style="height:${height}px">
+            ${hours.map((h) => `<span style="top:${(h - first) * HOUR_PX}px">${String(h).padStart(2, "0")}:00</span>`).join("")}
+          </div>
+          ${days.map((d) => {
+            const key = dayKey(d);
+            const dayStart = startOfDay(d), dayEnd = addDays(dayStart, 1);
+            const dayBlocks = blocks.filter((b) => new Date(b.start_at) < dayEnd && new Date(b.end_at) > dayStart);
+            const isToday = key === todayKey;
+            const now = new Date();
             return `
-            <div class="list-row appt-row is-link" data-lead="${esc(a.lead_id || "")}">
-              <span class="time-col">${fmtTime(a.start_at)}</span>
-              <span class="list-row-main"><strong>${esc(a.student_name || "Estudiante")}</strong><span>${esc(a.adult_name || "")}${a.phone ? ` · ${esc(a.phone)}` : ""}</span></span>
-              <span class="pill ${tone}">${esc(label)}</span>
-              ${canEdit && open ? `
-                <span class="appt-actions" data-stop>
-                  ${a.status === "scheduled" ? `<button class="btn btn-secondary btn-sm" data-appointment="${esc(a.id)}" data-status="confirmed">Confirmar</button>` : ""}
-                  <button class="btn btn-success btn-sm" data-appointment="${esc(a.id)}" data-status="completed">Realizada</button>
-                  <button class="btn btn-ghost btn-sm" data-appointment="${esc(a.id)}" data-status="no_show">No asistió</button>
-                  <button class="btn btn-ghost btn-sm" data-appointment="${esc(a.id)}" data-status="cancelled">Cancelar</button>
-                </span>` : ""}
+            <div class="cal-col ${isToday ? "is-today" : ""}" style="height:${height}px">
+              ${dayBlocks.map((b) => {
+                const s = Math.max(new Date(b.start_at), dayStart), e = Math.min(new Date(b.end_at), dayEnd);
+                const t = Math.max(0, top(s)), h = Math.min(height, top(e)) - t;
+                return h > 0 ? `<div class="cal-block" style="top:${t}px;height:${h}px" title="${esc(b.reason || "Bloqueado")}"><span>${esc(b.reason || "Bloqueado")}</span></div>` : "";
+              }).join("")}
+              ${(byDay[key] || []).map((a) => `
+                <button class="cal-event ${apptTone(a.status)} ${durationPx(a) < 44 ? "is-short" : ""}" data-appt="${esc(a.id)}" style="top:${top(a.start_at)}px;height:${durationPx(a)}px" title="${esc(`${fmtTime(a.start_at)} · ${a.student_name || ""} · ${a.adult_name || ""}`)}">
+                  ${durationPx(a) < 44
+                    ? `<span class="cal-event-line"><b>${fmtTime(a.start_at)}</b> ${esc(a.student_name || a.adult_name || "Visita")}</span>`
+                    : `<strong>${esc(a.student_name || a.adult_name || "Visita")}</strong><span>${fmtTime(a.start_at)}${a.adult_name && a.student_name ? ` · ${esc(a.adult_name)}` : ""}</span>`}
+                </button>`).join("")}
+              ${isToday && hoursOf(now) >= first && hoursOf(now) <= last ? `<div class="cal-now" style="top:${top(now)}px"></div>` : ""}
             </div>`;
           }).join("")}
         </div>
-      </section>`).join("");
+      </div>
+    </div>
+    ${appointments.length ? "" : '<p class="muted small" style="padding:0 4px">No hay visitas esta semana.</p>'}`;
 
-    wireLeadOpeners();
-    $$("[data-appointment]", view).forEach((btn) => btn.addEventListener("click", async () => {
-      const status = btn.dataset.status;
-      const [label] = APPT_STATUS[status];
-      if (status === "cancelled" || status === "no_show") {
-        const ok = await confirmDialog(
-          status === "cancelled" ? "Se cancela la visita y se libera el horario." : "La visita queda marcada como no asistida.",
-          { title: status === "cancelled" ? "Cancelar visita" : "Marcar como no asistió", confirmLabel: status === "cancelled" ? "Cancelar visita" : "Marcar", danger: status === "cancelled" }
-        );
-        if (!ok) return;
-      }
-      try {
-        await post("/api/crm/appointments", { id: btn.dataset.appointment, status });
-        toast(`Visita marcada como ${label.toLowerCase()}.`);
-        loadAgenda();
-        refreshBadges();
-      } catch (error) { toast(error.message, { error: true }); }
-    }));
-  } catch (error) {
-    handleViewError(error);
+  const index = Object.fromEntries(appointments.map((a) => [a.id, a]));
+  $$("[data-appt]", body).forEach((el) => el.addEventListener("click", () => openAppointmentDialog(index[el.dataset.appt])));
+
+  // Start scrolled near the first event or the current time.
+  const scroller = $(".cal-scroll", body);
+  const firstEvent = appointments[0] ? top(appointments[0].start_at) : 0;
+  scroller.scrollTop = Math.max(0, firstEvent - HOUR_PX);
+  const todayIndex = days.findIndex((d) => dayKey(d) === todayKey);
+  if (todayIndex > 0 && scroller.scrollWidth > scroller.clientWidth) {
+    scroller.scrollLeft = $$(".cal-dayhead", body)[todayIndex].offsetLeft - 56;
   }
+}
+
+function renderAgendaMonth(body, appointments, range) {
+  const days = Array.from({ length: 42 }, (_, i) => addDays(range.from, i));
+  const todayKey = dayKey(new Date());
+  const month = range.first.getMonth();
+  const byDay = {};
+  appointments.forEach((a) => (byDay[dayKey(a.start_at)] ||= []).push(a));
+  const weekdays = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  body.innerHTML = `
+    <div class="card cal-month">
+      <div class="cal-month-head">${weekdays.map((w) => `<span>${w}</span>`).join("")}</div>
+      <div class="cal-month-grid">
+        ${days.map((d) => {
+          const key = dayKey(d);
+          const items = byDay[key] || [];
+          return `
+          <div class="cal-cell ${d.getMonth() !== month ? "is-outside" : ""} ${key === todayKey ? "is-today" : ""}" data-day="${key}">
+            <span class="cal-cell-num">${d.getDate()}</span>
+            <div class="cal-cell-events">
+              ${items.slice(0, 3).map((a) => `
+                <button class="cal-chip ${apptTone(a.status)}" data-appt="${esc(a.id)}"><b>${fmtTime(a.start_at)}</b> ${esc(a.student_name || a.adult_name || "Visita")}</button>`).join("")}
+              ${items.length > 3 ? `<button class="cal-more" data-day-more="${key}">+${items.length - 3} más</button>` : ""}
+            </div>
+            ${items.length ? `<span class="cal-dot-count">${items.length}</span>` : ""}
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+
+  const index = Object.fromEntries(appointments.map((a) => [a.id, a]));
+  $$("[data-appt]", body).forEach((el) => el.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openAppointmentDialog(index[el.dataset.appt]);
+  }));
+  $$("[data-day]", body).forEach((cell) => cell.addEventListener("click", () => {
+    agendaDate = new Date(`${cell.dataset.day}T12:00:00`);
+    agendaMode = "week";
+    loadAgenda();
+  }));
 }
 
 /* ---------- Follow-ups ---------- */
