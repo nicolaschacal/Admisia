@@ -2,7 +2,7 @@
 
 Asistente de admisiones con IA para colegios: chat estilo WhatsApp para las familias, agenda de visitas y panel de gestión.
 
-<video src="frontend/assets/admisia-video.mp4" controls width="100%"></video>
+[![Ver presentación de AdmisIA](frontend/assets/admisia-video-preview.svg)](https://github.com/nicolaschacal/Admisia/blob/main/frontend/assets/admisia-video.mp4)
 
 ## Instalación en 4 pasos
 
