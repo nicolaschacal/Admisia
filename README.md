@@ -2,6 +2,8 @@
 
 Asistente de admisiones con IA para colegios: chat estilo WhatsApp para las familias, agenda de visitas y panel de gestión.
 
+<video src="frontend/assets/admisia-video.mp4" controls width="100%"></video>
+
 ## Instalación en 4 pasos
 
 1. **Base de datos.** Creá una base PostgreSQL (Neon, Supabase, Railway o tu servidor) y copiá su URL.
