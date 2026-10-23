@@ -1,4 +1,4 @@
-# Guía de entrega y exposición — AdmisIA / Colegio privado
+# AdmisIA / Colegio privado
 
 ## 1. Problema
 
