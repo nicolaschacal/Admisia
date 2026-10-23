@@ -1,8 +1,8 @@
-# Guía de entrega y exposición — AdmisIA / Colegio Nubarian
+# Guía de entrega y exposición — AdmisIA / Colegio privado
 
 ## 1. Problema
 
-El Colegio Nubarian recibe consultas de familias interesadas en Inicial y Primaria. Muchas preguntas se repiten: propuesta educativa, horarios, modalidades, proceso de inscripción y orientación económica. El equipo de Admisiones no siempre puede responder inmediatamente.
+Un colegio privado recibe consultas de familias interesadas en su propuesta educativa. Muchas preguntas se repiten: propuesta educativa, horarios, modalidades, proceso de inscripción y orientación económica. El equipo de Admisiones no siempre puede responder inmediatamente.
 
 ## 2. Solución
 
@@ -40,22 +40,22 @@ Esto permite elegir libremente entre los modelos compatibles con la instalación
 ## 5. Contexto y prompt
 
 ### Rol
-Asistente virtual de admisiones del Colegio Nubarian.
+Asistente virtual de admisiones de un colegio privado.
 
 ### Alcance
-Exclusivamente Inicial y Primaria.
+El asistente responde exclusivamente sobre los niveles, servicios y procesos que el colegio tenga configurados en su información institucional.
 
 ### Contexto
-El prompt contiene información sobre propuesta educativa, modalidades, horarios, instalaciones, proceso de inscripción, contacto y valores estimativos 2026.
+El prompt contiene información sobre propuesta educativa, modalidades, horarios, instalaciones, proceso de inscripción, contacto y valores estimativos que el colegio decida proporcionar.
 
 ### Política económica
-El colegio no comunica el detalle económico definitivo por WhatsApp o chat. El asistente puede brindar valores estimativos de referencia y debe aclarar que el detalle final se informa luego de conocer la propuesta y las instalaciones.
+El colegio puede definir desde su configuración qué información económica puede comunicar el asistente. Cuando corresponda, debe aclarar si los valores son estimativos y derivar al equipo de Admisiones para el detalle definitivo.
 
 ### Restricciones
 - No inventar vacantes ni información institucional.
 - No presentar costos estimativos como definitivos.
 - No solicitar datos sensibles de menores.
-- No mencionar niveles que el colegio no ofrece.
+- No mencionar niveles o servicios que el colegio no tenga configurados.
 - Derivar a Admisiones cuando algo requiera confirmación.
 
 ## 6. Memoria temporal
@@ -65,8 +65,8 @@ El frontend guarda hasta las últimas 10 intervenciones en `sessionStorage`. El 
 ## 7. Demo sugerida
 
 1. “¿Qué niveles tienen?”
-2. “Mi hijo entra a Primaria, ¿qué propuesta ofrecen?”
-3. “¿Y cuánto cuesta?” — debe mantener el contexto de Primaria.
+2. “¿Qué propuesta educativa ofrecen?”
+3. “¿Y cuánto cuesta?” — debe mantener el contexto de la conversación.
 4. “¿Tienen vacante?” — debe derivar a Admisiones.
 5. Mostrar la configuración de IA para explicar que el asistente puede utilizar un modelo principal y uno secundario.
 6. Mostrar “Nueva consulta” para explicar cómo se borra la memoria temporal.
